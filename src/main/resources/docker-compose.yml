@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:15
+    container_name: trading_bot_postgres
+    environment:
+      POSTGRES_USER: tradingbot
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: tradingbotdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  dbeaver:
+    image: dbeaver/cloudbeaver:latest
+    container_name: dbeaver
+    environment:
+      CB_SERVER_PORT: 8080
+    ports:
+      - "9192:8978"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
