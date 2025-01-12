@@ -5,7 +5,7 @@ database:
 
 bot:
   symbol: "BTCUSDC"
-  name: pc-test
+  name: feature-test
   core_interval: 30
   amount_to_trade: 500
 
