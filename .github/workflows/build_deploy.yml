@@ -1,0 +1,72 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Build and Deploy in tailscale server 
+
+on: 
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        default: 'DEV'
+        type: choice
+        options:
+        - DEV
+        - PROD
+      app_name:
+        description: 'Name of the container'
+        default: 'criptobo'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    
+    - name: Check out the repository
+      uses: actions/checkout@v3
+
+    - name: Set secrets dynamically
+      run: |
+        git checkout ${{ github.ref }
+        sed -i 's|{{API_KEY}}|'"${{ secrets[format('{0}_APIKEY_BINANCE', github.event.inputs.environment)] }}"'|g' src/main/resources/config.yaml
+        sed -i 's|{{SECRET_KEY}}|'"${{ secrets[format('{0}_SECRET_BINANCE', github.event.inputs.environment)] }}"'|g' src/main/resources/config.yaml
+    - name: Set Environment Variables
+      run: |
+        IMAGE_NAME="${{ github.event.inputs.environment }}-${{ github.event.inputs.app_name }}"
+        echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+    
+    - name: Install Tailscale
+      run: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+    
+    - name: Authenticate to Tailscale
+      run: sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
+      
+    - name: Set up SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+
+    - name: Clean up existing containers and images
+      run: |
+        ssh -o StrictHostKeyChecking=no jeff@severino.pinto-char.ts.net << EOF        
+          echo "Stopping and removing existing container and image with name $IMAGE_NAME..."
+          docker stop $IMAGE_NAME || true
+          docker rm $IMAGE_NAME || true
+          docker rmi -f $IMAGE_NAME || true
+        EOF
+
+    - name: clean directory
+      run: ssh -o StrictHostKeyChecking=no jeff@severino.pinto-char.ts.net "rm -rf rm -rf ~/cloud-criptobo/criptobo/"
+
+    - name: clone repository to server
+      run: scp -o StrictHostKeyChecking=no -r . jeff@severino.pinto-char.ts.net:~/cloud-criptobo/criptobo
+
+    - name: Build Image and Deploy
+      run: ssh -o StrictHostKeyChecking=no jeff@severino.pinto-char.ts.net "cd ~/cloud-criptobo/criptobo && docker build -t $IMAGE_NAME . && docker run -d -it --name $IMAGE_NAME $IMAGE_NAME"

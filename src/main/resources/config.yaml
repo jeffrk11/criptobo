@@ -1,0 +1,23 @@
+database:
+  url: jdbc:postgresql://192.168.1.169:5433/tradingbotdb
+  user: tradingbot
+  password: admin123
+
+bot:
+  symbol: "BTCUSDC"
+  name: pc-test
+  core_interval: 30
+  amount_to_trade: 500
+
+  strategy:
+    type: low-risk
+    baseDifference: -0.3
+    targetMultiply: 2
+    targetPricePercentage: 1.0031
+    stagnantMinutes: 120
+
+binance:
+  #url: https://api.binance.com/api/v3
+  url: https://testnet.binance.vision/api/v3 #test environment
+  api_key: {{API_KEY}}
+  secret_key: {{SECRET_KEY}}
