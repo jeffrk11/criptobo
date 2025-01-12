@@ -1,13 +1,13 @@
 database:
-  url: jdbc:postgresql://192.168.1.169:5433/tradingbotdb
+  url: {{POSTGRES_URL}}/tradingbotdb
   user: tradingbot
   password: admin123
 
 bot:
   symbol: "BTCUSDC"
-  name: feature-test
+  name: criptobo-btcusdc
   core_interval: 30
-  amount_to_trade: 500
+  amount_to_trade: 10
 
   strategy:
     type: low-risk
@@ -17,7 +17,6 @@ bot:
     stagnantMinutes: 120
 
 binance:
-  #url: https://api.binance.com/api/v3
-  url: https://testnet.binance.vision/api/v3 #test environment
+  url: {{BINANCE_URL}}
   api_key: {{API_KEY}}
   secret_key: {{SECRET_KEY}}
