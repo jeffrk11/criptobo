@@ -32,6 +32,7 @@ public class BotService {
 
         //no more orders left
         if(getLastPendingOrders().isEmpty()){
+            log.info("no more order -> buy");
             buy();
             return;
         }
@@ -52,11 +53,13 @@ public class BotService {
         checkOpenOrder(openInternalOrders);
 
         if(differencePercentage <= targetDifference){
+            log.info("target percentage  -> buy");
             buy();
             return;
         }
-        
+
         if(timeSinceLastBuy > Integer.parseInt(ConfigLoader.get("bot.strategy.stagnantMinutes")) * 10000L){
+            log.info("time passed -> buy");
             buy();
         }
 

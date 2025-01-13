@@ -207,7 +207,7 @@ public class OrderRepository {
     }
 
     public int getCountOpenBuyOrders(){
-        String sql = "select count(*) from orders where order_type ='buy' and status ='pending'";
+        String sql = "select count(*) from orders where order_type ='buy' and status ='pending' and bot_name = '%s'".formatted(ConfigLoader.get("bot.name"));
         ResultSet result = performSql(sql);
         try {
             result.next();
