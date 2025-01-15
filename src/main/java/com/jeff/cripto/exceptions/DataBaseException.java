@@ -8,6 +8,10 @@ public class DataBaseException extends RuntimeException{
         super(e);
     }
 
+    public DataBaseException(String e) {
+        super(e);
+    }
+
     public DataBaseException(SQLException e, String msg) {
         super(msg, e);
     }

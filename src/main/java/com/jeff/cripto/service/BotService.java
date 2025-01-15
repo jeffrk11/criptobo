@@ -19,14 +19,14 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 @AllArgsConstructor
-public class BotService {
+public class BotService implements Bot{
     static Logger log = Logger.getLogger(BotService.class.getName());
     private OrderRepository orderRepository;
 
 
     public void analyze(){
         //check last price
-        double currentPrice = getCurrentPrice();
+        BigDecimal currentPrice = getCurrentPrice();
         //log.info(String.format("Current price: %s - %s", currentPrice, ConfigLoader.get("bot.symbol")));
 
 
@@ -36,15 +36,15 @@ public class BotService {
             buy();
             return;
         }
-        double lastTradePrice = getLastTradePrice();
-        double differencePercentage = calculateDifferencePercentage(lastTradePrice, currentPrice);
+        BigDecimal lastTradePrice = getLastTradePrice();
+        double differencePercentage = calculateDifferencePercentage(lastTradePrice.doubleValue(), currentPrice.doubleValue());
 
 
         double baseDifference =  Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"));
         double targetDifference = baseDifference * orderRepository.getCountOpenBuyOrders() * Double.parseDouble(ConfigLoader.get("bot.strategy.targetMultiply"));
         List<Order> openInternalOrders = orderRepository.getOpenOrdersByBot(ConfigLoader.get("bot.name"));
 
-        long timeSinceLastBuy = getTimeSinceLastBuy(orderRepository.getLastBoughtOrdersByBot(ConfigLoader.get("bot.name")));
+        long timeSinceLastBuy = getTimeSinceLastBuy(orderRepository.getLastBoughtOrderByBot(ConfigLoader.get("bot.name")));
 
         //log.info(String.format("Difference between last trade price %s, cut number : %s", differencePercentage, targetDifference));
 
@@ -58,22 +58,22 @@ public class BotService {
             return;
         }
 
-        if(timeSinceLastBuy > Integer.parseInt(ConfigLoader.get("bot.strategy.stagnantMinutes")) * 10000L){
-            log.info("time passed -> buy");
-            buy();
-        }
+//        if(timeSinceLastBuy >= Integer.parseInt(ConfigLoader.get("bot.strategy.stagnantMinutes")) * 60000L){
+//            log.info("time passed -> buy");
+//            buy();
+//        }
 
 
     }
 
-    private void printLog(double currentPrice, List<Order> openOrders, double lastTradePrice, double differencePercentage, double targetDifference, int minutes) {
+    private void printLog(BigDecimal currentPrice, List<Order> openOrders, BigDecimal lastTradePrice, double differencePercentage, double targetDifference, int minutes) {
         StringBuilder openedOrdersText = new StringBuilder();
         for(int i = 0; i < openOrders.size(); i++){
             openedOrdersText.append("🔴 $%s 🔹 ".formatted(openOrders.get(i).getPrice()));
             if( i > 0 && i % 7 == 0) openedOrdersText.append("\n\t");
         }
 
-        double targetPrice = (lastTradePrice * (targetDifference /100)) + lastTradePrice;
+        BigDecimal targetPrice = (lastTradePrice.multiply (BigDecimal.valueOf(targetDifference/100))).add(lastTradePrice);
 
         String lastPricePosition = differencePercentage >= 0 ? "🌲" : "🔻";
 
@@ -88,7 +88,8 @@ public class BotService {
 
             lastOperationsText.append("🟢 %s $%.2f ⇀ %02d/%02d-%02d:%02d  ❱ 🔴 %s $%.2f ⇀ %02d/%02d-%02d:%02d 💰 $%s \n\t"
                     .formatted(lastOperationsList.get(i+1).getStatus().equals("pending") ? "🔔" : "✔️", lastOperationsList.get(i+1).getPrice(),timeBuy.getDayOfMonth(),timeBuy.getMonthValue(), timeBuy.getHour(), timeBuy.getMinute(),
-                               lastOperationsList.get(i).getStatus().equals("pending") ? "🔔" : "✔️", lastOperationsList.get(i).getPrice(),validDate ? timeSell.getDayOfMonth() : 0,validDate ? timeSell.getMonthValue() : 0, validDate ? timeSell.getHour() : 0, validDate ? timeSell.getMinute() : 0, lastOperationsList.get(i).getProfit()));
+                               lastOperationsList.get(i).getStatus().equals("pending") ? "🔔" : "✔️", lastOperationsList.get(i).getPrice(),validDate ? timeSell.getDayOfMonth() : 0,validDate ? timeSell.getMonthValue() : 0, validDate ? timeSell.getHour() : 0, validDate ? timeSell.getMinute() : 0,
+                               lastOperationsList.get(i).getProfit().toPlainString()));
         }
         int time = Integer.parseInt(ConfigLoader.get("bot.strategy.stagnantMinutes"));
         StringBuilder timeText = new StringBuilder("▪".repeat(time));
@@ -134,13 +135,8 @@ public class BotService {
         log.info(logMesssage);
     }
 
-    private long getTimeSinceLastBuy(List<Order> orders){
-        if(orders.isEmpty())
-            return 0;
-        return  System.currentTimeMillis() - orders.get(0).getCreatedAt();
-//        log.info(String.format("%s minutes has passed since last buy", time / 60000 ));
-//        return time > 3600000; //one hour
-//        return time;
+    private long getTimeSinceLastBuy(Order order){
+        return  System.currentTimeMillis() - order.getCreatedAt();
     }
 
     private void checkOpenOrder(List<Order> openInternalOrders){
@@ -157,11 +153,12 @@ public class BotService {
 
             JsonArray fills = getFills(order.getBinanceOrderId());
 
-//            if(fills == null){
-//                updatingOrder(order);
-//                orderRepository.updateOrder(order);
-//                return;
-//            }
+            if(fills == null){
+                //maybe expired
+                updateOrder(order);
+                orderRepository.updateOrder(order);
+                return;
+            }
 
             OrderParse.parseFills(order, fills);
 
@@ -171,9 +168,9 @@ public class BotService {
 //            order.setCommissionAsset(fills.get("commissionAsset").getAsString());
             order.setBinanceStatus("FILLED");
 //            order.setPaidValue(fills.get("quoteQty").getAsDouble());
-            order.setPrice(fills.get(0).getAsJsonObject().get("price").getAsDouble());
+            order.setPrice(fills.get(0).getAsJsonObject().get("price").getAsBigDecimal());
 
-            int dependentOrderId = orderRepository.getDependencies(order.getOrderId()).get(0);
+            long dependentOrderId = orderRepository.getDependencies(order.getOrderId()).get(0);
 
             Order dependentOrder = orderRepository.getOrderById(dependentOrderId);
             updateSoldOrders(List.of(dependentOrder), order);
@@ -201,11 +198,11 @@ public class BotService {
                                                                                                 "quoteOrderQty="+ConfigLoader.get("bot.amount_to_trade"),
                                                             String.format("timestamp=%s", System.currentTimeMillis()));
             Order order = OrderParse.parseFrom(response);
-            order.setPaidValue(response.get("cummulativeQuoteQty").getAsDouble());
+            order.setPaidValue(response.get("cummulativeQuoteQty").getAsBigDecimal());
             log.info(String.format("bought for %s", order.getPaidValue()));
             orderRepository.insertOrder(order);
 
-            Order limitOrder = createLimitOrder(order.getPrice() *  Double.parseDouble(ConfigLoader.get("bot.strategy.targetPricePercentage")), order.getQuantity());
+            Order limitOrder = createLimitOrder(order.getPrice().multiply(BigDecimal.valueOf(Double.parseDouble(ConfigLoader.get("bot.strategy.targetPricePercentage")))), order.getQuantity());
             orderRepository.insertOrder(limitOrder);
             orderRepository.createDependency(order.getOrderId(), limitOrder.getOrderId());
 
@@ -214,7 +211,13 @@ public class BotService {
             log.severe(e.getMessage());
         }
     }
-    public Order createLimitOrder(double targetPrice, BigDecimal quantity){
+
+    @Override
+    public void sell() {
+
+    }
+
+    public Order createLimitOrder(BigDecimal targetPrice, BigDecimal quantity){
         log.info(String.format("creating LIMIT order to: %s",  targetPrice));
         try{
 
@@ -266,17 +269,17 @@ public class BotService {
     }
 
     private void updateSoldOrders(List<Order> orders, Order soldOrder){
-        double finalProfit = 0.0;
+        BigDecimal finalProfit = BigDecimal.ZERO;
 
         for (Order order : orders){
             order.setStatus("executed");
 
-            order.setProfit( (soldOrder.getPrice() * order.getQuantity().doubleValue()) - order.getPaidValue());
-            finalProfit += order.getPaidValue();
+            order.setProfit( (soldOrder.getPrice().multiply(order.getQuantity())).subtract(order.getPaidValue()));
+            finalProfit = finalProfit.add(order.getPaidValue());
             //finalCommision += order.getCommission();
             orderRepository.updateOrder(order);
         }
-        soldOrder.setProfit((soldOrder.getPaidValue() - finalProfit));
+        soldOrder.setProfit((soldOrder.getPaidValue().subtract(finalProfit)));
         soldOrder.setExecutedAt(System.currentTimeMillis());
         orderRepository.updateOrder(soldOrder);
     }
@@ -286,19 +289,17 @@ public class BotService {
         return  100 - ((lastPrice * 100 ) / currentPrice);
     }
 
-    public double getCurrentPrice(){
+    public BigDecimal getCurrentPrice(){
         JsonObject resp =  HttpHelper.doGet( String.format("%s/ticker/price?symbol=%s",ConfigLoader.get("binance.url"),ConfigLoader.get("bot.symbol")));
-        return resp.get("price").getAsDouble();
+        return resp.get("price").getAsBigDecimal();
     }
 
     public List<Order> getLastPendingOrders(){
         return orderRepository.getPendingOrdersByBot(ConfigLoader.get("bot.name"));
     }
 
-    public double getLastTradePrice(){
-        List<Order> orders = orderRepository.getLastBoughtOrdersByBot(ConfigLoader.get("bot.name"));
-
-        return orders.get(0).getPrice();
+    public BigDecimal getLastTradePrice(){
+        return orderRepository.getLastBoughtOrderByBot(ConfigLoader.get("bot.name")).getPrice();
     }
 
     public List<Order> getOpenOrders(){
@@ -325,7 +326,7 @@ public class BotService {
         return response.getAsJsonArray();
     }
 
-    private void updatingOrder(Order order){
+    private void updateOrder(Order order){
         //checar se ordem tem status diferente EXPIRED_IN_MATCH
         JsonElement response =  HttpHelper.doSignedGet(String.format("%s/order", ConfigLoader.get("binance.url")),
                 "symbol=" + ConfigLoader.get("bot.symbol"),

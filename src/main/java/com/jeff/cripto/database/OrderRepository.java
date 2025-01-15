@@ -1,123 +1,64 @@
 package com.jeff.cripto.database;
 
-
 import com.jeff.cripto.config.ConfigLoader;
-import com.jeff.cripto.config.DataBaseConnection;
-import com.jeff.cripto.exceptions.DataBaseException;
+import com.jeff.cripto.model.DependentOrder;
 import com.jeff.cripto.model.Order;
-import com.jeff.cripto.utils.OrderParse;
+import com.jeff.cripto.utils.MapperDataBaseUtil;
 
-import java.sql.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
-public class OrderRepository {
+public class OrderRepository extends Repository{
     static Logger log = Logger.getLogger(OrderRepository.class.getName());
-
-    private ResultSet performSql(String sql){
-        Connection connection = null;
-        try {
-            connection = DataBaseConnection.getConnection();
-            Statement statement = connection.createStatement();
-            ResultSet result = statement.executeQuery(sql);
-            connection.close();
-            return result;
-        } catch (SQLException e) {
-            throw new DataBaseException(e, "Erro when peforming sql "+e.getMessage());
-        }
-    }
 
     public List<Order> getAllOrders(String botname, int limit){
         String sql = String.format("select * from orders where bot_name = '%s' order by order_id DESC limit %s", botname, limit);
 
-        ResultSet result = performSql(sql);
+        List<Map<String, Object>> rows = query(sql);
 
-        List<Order> orders = new ArrayList<>();
-        try {
-            while(result.next()){
-                orders.add(OrderParse.parseFrom(result));
-            }
-        } catch (SQLException e) {
-            throw new DataBaseException(e,"Error while iterating orders");
-        }
-        return orders;
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
 
     public List<Order> getPendingOrdersByBot(String botname){
         String sql = String.format("select * from orders where bot_name = '%s' and status = 'pending' and binance_status = 'FILLED' order by created_at DESC", botname);
 
-        ResultSet result = performSql(sql);
+        List<Map<String, Object>> rows = query(sql);
 
-        List<Order> orders = new ArrayList<>();
-        try {
-            while(result.next()){
-                orders.add(OrderParse.parseFrom(result));
-            }
-        } catch (SQLException e) {
-            throw new DataBaseException(e,"Error while iterating orders");
-        }
-        return orders;
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
 
-    public List<Order> getLastBoughtOrdersByBot(String botname){
-        String sql = String.format("select * from orders where bot_name = '%s' and order_type = 'buy' and binance_status = 'FILLED' order by created_at DESC", botname);
+    public Order getLastBoughtOrderByBot(String botname){
+        String sql = String.format("select * from orders where bot_name = '%s' and order_type = 'buy' and binance_status = 'FILLED' order by created_at DESC LIMIT 1", botname);
 
-        ResultSet result = performSql(sql);
+        List<Map<String, Object>> rows = query(sql);
 
-        List<Order> orders = new ArrayList<>();
-        try {
-            while(result.next()){
-                orders.add(OrderParse.parseFrom(result));
-            }
-        } catch (SQLException e) {
-            throw new DataBaseException(e,"Error while iterating orders");
-        }
-        return orders;
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class).get(0);
     }
 
     public List<Order> getOpenOrdersByBot(String botname){
         String sql = String.format("select * from orders where bot_name = '%s' and binance_status = 'NEW' order by created_at DESC", botname);
 
-        ResultSet result = performSql(sql);
+        List<Map<String, Object>> rows = query(sql);
 
-        List<Order> orders = new ArrayList<>();
-        try {
-            while(result.next()){
-                orders.add(OrderParse.parseFrom(result));
-            }
-        } catch (SQLException e) {
-            throw new DataBaseException(e,"Error while iterating orders");
-        }
-        return orders;
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
 
     public List<Order> getOrdersBelowPrice(String botName, double price){
         String sql = String.format("select * from orders where bot_name = '%s' and status = 'pending' and price < %s order by created_at DESC", botName, price);
 
-        ResultSet result = performSql(sql);
+        List<Map<String, Object>> rows = query(sql);
 
-        List<Order> orders = new ArrayList<>();
-        try {
-            while(result.next()){
-                orders.add(OrderParse.parseFrom(result));
-            }
-        } catch (SQLException e) {
-            throw new DataBaseException(e,"Error while iterating orders");
-        }
-        return orders;
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
-    public Order getOrderById(int id){
-        String sql = String.format("select * from orders where order_id =%s", id);
 
-        ResultSet result = performSql(sql);
-        try {
-            result.next();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return OrderParse.parseFrom(result);
+    public Order getOrderById(long id){
+        String sql = String.format("select * from orders where order_id =%s", id);
+        List<Map<String, Object>> rows = query(sql);
+
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class).get(0);
     }
 
     public void insertOrder(Order order){
@@ -125,99 +66,40 @@ public class OrderRepository {
         if (order.getOrderId() == 0)
             order.setOrderId(nextId());
 
-        String sql =
-                """ 
-                INSERT INTO public.orders
-                (order_id, bot_name, symbol, order_type, price, profit, status, commission, commission_asset, binance_order_id, created_at, executed_at, paid_value, quantity, binance_status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                """;
-
-        try {
-            Connection connection = DataBaseConnection.getConnection();
-            PreparedStatement prepared = connection.prepareStatement(sql);
-            OrderParse.parseTo(order, prepared);
-            prepared.executeUpdate();
-            connection.close();
-            log.info(String.format("Inserted %s", order.toString()));
-
-        } catch (SQLException e) {
-            throw new DataBaseException(e,"Error when inserting order :"+e.getMessage() );
-        }
+        insert(order);
     }
 
     public void updateOrder(Order order ) {
-        try {
-            String sqlContent = """
-                    UPDATE public.orders
-                    SET bot_name='%s', symbol='%s', order_type='%s', price=%s, profit=%s, status='%s', commission=%s, commission_asset='%s', binance_order_id=%s, created_at=%s, executed_at=%s, paid_value=%s, quantity=%s, binance_status='%s'
-                    WHERE order_id=%s;
-                    """;
-            String sql = String.format(sqlContent, order.getBotName(), order.getSymbol(), order.getOrderType(), order.getPrice(), order.getProfit(), order.getStatus(), order.getCommission(), order.getCommissionAsset(), order.getBinanceOrderId(), order.getCreatedAt(), order.getExecutedAt(), order.getPaidValue(), order.getQuantity(), order.getBinanceStatus(), order.getOrderId());
-            Connection connection = null;
-            connection = DataBaseConnection.getConnection();
-            PreparedStatement prepared = connection.prepareStatement(sql);
-            prepared.executeUpdate();
-            connection.close();
-        } catch (SQLException e) {
-            throw new DataBaseException(e, "Error while updating orders");
-        }
+        update(order);
     }
 
-    public void createDependency(int id, int idDependency){
-
-        String sql = """
-                INSERT INTO public.dependent_order
-                (id_order, id_dependent)
-                VALUES(%s, %s)
-                """;
-
-        try{
-            Connection connection = DataBaseConnection.getConnection();
-            PreparedStatement prepared = connection.prepareStatement(String.format(sql, id, idDependency));
-            prepared.executeUpdate();
-            connection.close();
-        }catch (Exception e){
-            throw new DataBaseException(e);
-        }
+    public void createDependency(long id, long idDependency){
+        insert(new DependentOrder(id,idDependency));
     }
 
-    public List<Integer> getDependencies(int id){
-        ResultSet resultSet= performSql(String.format("select id_order from dependent_order where id_dependent = %s",id));
-
-        try {
-            List<Integer> ids = new ArrayList<>();
-            while (resultSet.next()){
-                ids.add(resultSet.getInt("id_order"));
-            }
-            return ids;
-        } catch (SQLException e) {
-            throw new DataBaseException(e,"Error while iterating orders");
-        }
+    public List<Integer> getDependencies(long id){
+        return query("select id_order from dependent_order where id_dependent = %s".formatted(id))
+                .stream().map( m -> (Integer)  m.get("id_order")).toList();
     }
 
-    public int nextId(){
+    public long nextId(){
         String sql = "SELECT nextval('orders_order_id_seq')";
-        ResultSet result = performSql(sql);
-        try {
-            result.next();
-            return result.getInt(1);
-        } catch (SQLException e) {
-            throw new DataBaseException(e);
-        }
+        return (long) query(sql).get(0).get("nextval");
     }
 
-    public int getCountOpenBuyOrders(){
-        String sql = "select count(*) from orders where order_type ='buy' and status ='pending' and bot_name = '%s'".formatted(ConfigLoader.get("bot.name"));
-        ResultSet result = performSql(sql);
-        try {
-            result.next();
-            return  result.getInt("count");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+    public long getCountOpenBuyOrders(){
+        String sql = """
+                select count(*) from orders 
+                where order_type ='buy' 
+                    AND status ='pending' 
+                    AND bot_name = '%s' 
+                    AND created_at > (EXTRACT(EPOCH FROM NOW() - INTERVAL '12 hours') * 1000)
+                """.formatted(ConfigLoader.get("bot.name"));
+        long count = (long) query(sql).get(0).get("count");
+        return  count == 0 ? 1 : count;
     }
 
-    public double getAllProfitByDate(LocalDateTime date){
+    public BigDecimal getAllProfitByDate(LocalDateTime date){
         String sql = """
                 select sum(profit) as total from orders o\s
                 where order_type = 'sell'
@@ -225,13 +107,8 @@ public class OrderRepository {
                 """.formatted(ConfigLoader.get("bot.name"));
         if(date != null)
             sql += " and TO_TIMESTAMP(executed_at / 1000)::DATE = '%s-%s-%s'".formatted(date.getYear(),date.getMonthValue(),date.getDayOfMonth());
-        ResultSet result = performSql(sql);
-        try {
-            result.next();
-            return  result.getDouble("total");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+
+        return (BigDecimal) query(sql).get(0).get("total");
     }
 
 
