@@ -3,7 +3,7 @@ package com.jeff.cripto;
 import com.jeff.cripto.config.ConfigLoader;
 
 import com.jeff.cripto.database.OrderRepository;
-import com.jeff.cripto.service.BotService;
+import com.jeff.cripto.service.LowRiskBot;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -18,11 +18,11 @@ public class Main {
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         int interval = Integer.parseInt(ConfigLoader.get("bot.core_interval"));
 
-        BotService botService = new BotService(new OrderRepository());
+        LowRiskBot lowRiskBot = new LowRiskBot(new OrderRepository());
 
         Runnable task = () -> {
             try{
-                botService.analyze();
+                lowRiskBot.process();
 
             }catch (Exception e){
                 logger.severe("Something happen: "+e.getMessage());

@@ -1,8 +1,10 @@
 package com.jeff.cripto.service;
 
+import com.jeff.cripto.model.Order;
+
 public interface Bot {
 
-    void analyze();
-    void buy();
-    void sell();
+    void process();
+    Order buy(BuyStrategy strategy);
+    Order sell(SellStrategy strategy);
 }

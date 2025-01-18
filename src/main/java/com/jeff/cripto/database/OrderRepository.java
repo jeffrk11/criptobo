@@ -14,40 +14,48 @@ import java.util.logging.Logger;
 public class OrderRepository extends Repository{
     static Logger log = Logger.getLogger(OrderRepository.class.getName());
 
-    public List<Order> getAllOrders(String botname, int limit){
-        String sql = String.format("select * from orders where bot_name = '%s' order by order_id DESC limit %s", botname, limit);
+    public List<Order> getAllOrders(int limit){
+        String sql = String.format("select * from orders where bot_name = '%s' order by order_id DESC limit %s", ConfigLoader.get("bot.name"), limit);
 
         List<Map<String, Object>> rows = query(sql);
 
         return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
 
-    public List<Order> getPendingOrdersByBot(String botname){
-        String sql = String.format("select * from orders where bot_name = '%s' and status = 'pending' and binance_status = 'FILLED' order by created_at DESC", botname);
+    public List<Order> getPendingOrders(){
+        String sql = String.format("select * from orders where bot_name = '%s' and status = 'pending' and binance_status = 'FILLED' order by created_at DESC", ConfigLoader.get("bot.name"));
 
         List<Map<String, Object>> rows = query(sql);
 
         return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
 
-    public Order getLastBoughtOrderByBot(String botname){
-        String sql = String.format("select * from orders where bot_name = '%s' and order_type = 'buy' and binance_status = 'FILLED' order by created_at DESC LIMIT 1", botname);
+    public Order getLastBoughtOrder(){
+        String sql = String.format("select * from orders where bot_name = '%s' and order_type = 'buy' and binance_status = 'FILLED' order by created_at DESC LIMIT 1", ConfigLoader.get("bot.name"));
 
         List<Map<String, Object>> rows = query(sql);
 
         return MapperDataBaseUtil.mapFromRows(rows, Order.class).get(0);
     }
 
-    public List<Order> getOpenOrdersByBot(String botname){
-        String sql = String.format("select * from orders where bot_name = '%s' and binance_status = 'NEW' order by created_at DESC", botname);
+    public Order getLastOperationFilledOrder(){
+        String sql = String.format("select * from orders where bot_name = '%s' and binance_status = 'FILLED' order by executed_at DESC LIMIT 1", ConfigLoader.get("bot.name"));
+
+        List<Map<String, Object>> rows = query(sql);
+
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class).get(0);
+    }
+
+    public List<Order> getOpenOrders(){
+        String sql = String.format("select * from orders where bot_name = '%s' and binance_status = 'NEW' order by created_at DESC", ConfigLoader.get("bot.name"));
 
         List<Map<String, Object>> rows = query(sql);
 
         return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
 
-    public List<Order> getOrdersBelowPrice(String botName, double price){
-        String sql = String.format("select * from orders where bot_name = '%s' and status = 'pending' and price < %s order by created_at DESC", botName, price);
+    public List<Order> getOrdersBelowPrice(double price){
+        String sql = String.format("select * from orders where bot_name = '%s' and status = 'pending' and price < %s order by created_at DESC", ConfigLoader.get("bot.name"), price);
 
         List<Map<String, Object>> rows = query(sql);
 
@@ -93,7 +101,7 @@ public class OrderRepository extends Repository{
                 where order_type ='buy' 
                     AND status ='pending' 
                     AND bot_name = '%s' 
-                    AND created_at > (EXTRACT(EPOCH FROM NOW() - INTERVAL '12 hours') * 1000)
+                    AND created_at > (EXTRACT(EPOCH FROM NOW() - INTERVAL '1 hours') * 1000)
                 """.formatted(ConfigLoader.get("bot.name"));
         long count = (long) query(sql).get(0).get("count");
         return  count == 0 ? 1 : count;
