@@ -40,8 +40,8 @@ public class LowRiskBot implements Bot{
         double differencePercentage = calculateDifferencePercentage(lastTradePrice.doubleValue(), currentPrice.doubleValue());
 
 
-        double baseDifference =  Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"));
-        double targetDifference = baseDifference * orderRepository.getCountOpenBuyOrders() * Double.parseDouble(ConfigLoader.get("bot.strategy.targetMultiply"));
+        double targetDifference = calculateTargetDifference();
+
         List<Order> openInternalOrders = orderRepository.getOpenOrders();
 
         long timeSinceLastBuy = getTimeSinceLastBuy(orderRepository.getLastBoughtOrder());
@@ -64,6 +64,20 @@ public class LowRiskBot implements Bot{
 //        }
 
 
+    }
+
+    private double calculateTargetDifference(){
+        double baseDifference =  Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"));
+        List<Order> lastOperationsList = orderRepository.getAllOrders( 50);
+        int openOrdersStreak = 1;
+        for(Order order : lastOperationsList){
+            if(order.getOrderType().equals("sell"))
+                continue;
+            if(order.getStatus().equals("executed"))
+                break;
+            openOrdersStreak++;
+        }
+        return baseDifference * openOrdersStreak * Double.parseDouble(ConfigLoader.get("bot.strategy.targetMultiply"));
     }
 
     private void createOperation(){
