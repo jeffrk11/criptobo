@@ -11,7 +11,7 @@ bot:
 
   strategy:
     type: low-risk
-    baseDifference: -0.015
+    baseDifference: -0.03
     targetMultiply: 3
     targetPricePercentage: 1.0031
     stagnantMinutes: 120
