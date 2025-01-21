@@ -3,6 +3,7 @@ package com.jeff.cripto;
 import com.jeff.cripto.config.ConfigLoader;
 
 import com.jeff.cripto.trading.bot.Bot;
+import com.jeff.cripto.trading.strategy.MarketStrategy;
 import com.jeff.cripto.trading.strategy.StrategyBot;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -29,7 +30,6 @@ public class Main {
         int interval = Integer.parseInt(ConfigLoader.get("bot.core_interval"));
 
         Bot bot = StrategyBot.valueOf(ConfigLoader.get("bot.strategy.type")).getBot();
-
         Runnable task = () -> {
             try{
                 bot.process();

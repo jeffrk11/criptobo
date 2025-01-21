@@ -43,7 +43,7 @@ public class LevaregeBot implements Bot{
         if(checkpoint.getUp() == null && BigDecimal.valueOf(differenceCheckpoint).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0){
             checkpoint.setUp(differenceCheckpoint > 0);
             checkpoint.setPrice(currentPrice);
-            checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp(), checkpoint.getStreak()));
+            checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp()));
             return;
         }else if(checkpoint.getUp() == null){
             log.info("Checkpoint not in range %s of +-%s".formatted(differenceCheckpoint, ConfigLoader.getDouble("bot.strategy.baseDifference")));
@@ -53,22 +53,25 @@ public class LevaregeBot implements Bot{
         if(checkpoint.getUp() == null) return;
 
         if(shouldBuy(checkpoint, currentPrice)){
+            checkpoint.setUp(null);
+            if(currentPrice.compareTo(orderRepository.getLastBoughtOrder().getPrice()) > 0)
+                return;
             log.warning("BUY");
             buy(new MarketStrategy());
-            checkpoint.setUp(null);
             return;
         }
         if(shouldSell(checkpoint, currentPrice)){
             log.warning("SELL");
             Order order = sell(new MarketStrategy());
-            if(order == null) return;
+            if(order != null)
+                log.info("Sold for %s".formatted(order.getPaidValue().toPlainString()));
 
             checkpoint.setUp(null);
             return;
         }
         if(shouldUpdateCheckpoint(checkpoint, differenceCheckpoint)){
             checkpoint.setPrice(currentPrice);
-            checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp(), checkpoint.getStreak()+1));
+            checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp()));
             log.warning("updated checkpoint -> %s --- %s".formatted(Math.abs(differenceCheckpoint), Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"))));
             //log.info("checkpoint value %s target value %s".formatted(checkpoint.getPrice(), checkpoint.getTargetValue()));
         }
@@ -134,9 +137,9 @@ public class LevaregeBot implements Bot{
     }
 
 
-    private BigDecimal calculateNextPrice(BigDecimal currentPrice, Boolean up, int multiplier){
+    private BigDecimal calculateNextPrice(BigDecimal currentPrice, Boolean up){
 
-        double targetDifference =  (Double.parseDouble(ConfigLoader.get("bot.strategy.targetPricePercentage")) * multiplier);
+        double targetDifference =  (Double.parseDouble(ConfigLoader.get("bot.strategy.targetPricePercentage")));
 
         BigDecimal rest = currentPrice.multiply(BigDecimal.valueOf(targetDifference));
 
@@ -153,6 +156,7 @@ public class LevaregeBot implements Bot{
     @Override
     public Order buy(BuyStrategy strategy) {
         Order order = strategy.buy();
+        if(order == null) return null;
         orderRepository.insertOrder(order);
         return order;
     }
@@ -164,7 +168,7 @@ public class LevaregeBot implements Bot{
 
         for(Order order : orders){
             double diff = calculateDifferencePercentage( order.getPrice().doubleValue(), currentPrice.doubleValue());
-            if(diff >= Double.parseDouble(ConfigLoader.get("bot.strategy.targetPricePercentage"))){
+            if(diff >= ConfigLoader.getDouble("bot.strategy.baseDifference") * ConfigLoader.getDouble("bot.strategy.targetMultiply")){
                 validOrders.add(order);
             }
         }
@@ -174,25 +178,26 @@ public class LevaregeBot implements Bot{
             return null;
         }
 
-        ((MarketStrategy) strategy).setQuantity(BigDecimal.valueOf(validOrders.stream().mapToDouble(o -> o.getQuantity().doubleValue()).sum()));
+        BigDecimal totalQuantity = BigDecimal.ZERO;
+        for (Order order : validOrders) {
+            totalQuantity = totalQuantity.add(order.getQuantity());
+        }
+
+        ((MarketStrategy) strategy).setQuantity(totalQuantity);
 
         Order sold =  strategy.sell();
         if(sold == null) return null;
 
-        BigDecimal profit = BigDecimal.ZERO;
-
         for(Order order : validOrders){
+            order.setExecutedAt(System.currentTimeMillis());
             order.setProfit(order.getQuantity().multiply(sold.getPrice()).subtract(order.getPaidValue()));
+            order.setStatus("executed");
             sold.setProfit(sold.getProfit().add(order.getProfit()));
-            order.setStatus("executed");
-        }
-        sold.setStatus("executed");
-        orderRepository.insertOrder(sold);
-        for(Order order : validOrders){
-            order.setStatus("executed");
             orderRepository.updateOrder(order);
             orderRepository.createDependency(order.getOrderId(), sold.getOrderId());
         }
+        sold.setStatus("executed");
+        orderRepository.insertOrder(sold);
         return sold;
     }
 }

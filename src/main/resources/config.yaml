@@ -5,16 +5,15 @@ database:
 
 bot:
   symbol: "BTCUSDC"
-  name: criptobo-btcusdc
-  core_interval: 30
+  name: leverage-btcusdc
+  core_interval: 360
   amount_to_trade: 10
 
   strategy:
-    type: low-risk
-    baseDifference: -0.03
-    targetMultiply: 3
-    targetPricePercentage: 1.0031
-    stagnantMinutes: 120
+    type: LEVAREGE
+    baseDifference: 0.03
+    targetMultiply: 1.4
+    targetPricePercentage: 0.0012   #next price to buy
 
 binance:
   url: {{BINANCE_URL}}
