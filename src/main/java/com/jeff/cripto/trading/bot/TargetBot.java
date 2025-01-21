@@ -1,14 +1,17 @@
-package com.jeff.cripto.service;
+package com.jeff.cripto.trading.bot;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.jeff.cripto.config.ConfigLoader;
 import com.jeff.cripto.database.OrderRepository;
 import com.jeff.cripto.model.Order;
+import com.jeff.cripto.trading.strategy.BuyStrategy;
+import com.jeff.cripto.trading.strategy.LimitStrategy;
+import com.jeff.cripto.trading.strategy.MarketStrategy;
+import com.jeff.cripto.trading.strategy.SellStrategy;
+import com.jeff.cripto.trading.utils.BinanceService;
 import com.jeff.cripto.utils.HttpHelper;
 import com.jeff.cripto.utils.OrderParse;
-import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -18,15 +21,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-@AllArgsConstructor
-public class LowRiskBot implements Bot{
-    static Logger log = Logger.getLogger(LowRiskBot.class.getName());
-    private OrderRepository orderRepository;
+public class TargetBot implements Bot{
+    static Logger log = Logger.getLogger(TargetBot.class.getName());
+    private final OrderRepository orderRepository;
 
+
+    public TargetBot(){
+        this.orderRepository = new OrderRepository();
+    }
 
     public void process(){
         //check last price
-        BigDecimal currentPrice = getCurrentPrice();
+        BigDecimal currentPrice = BinanceService.getCurrentPrice();
         //log.info(String.format("Current price: %s - %s", currentPrice, ConfigLoader.get("bot.symbol")));
 
 
@@ -229,15 +235,6 @@ public class LowRiskBot implements Bot{
         orderRepository.updateOrder(soldOrder);
     }
 
-
-    private double calculateDifferencePercentage(double lastPrice, double currentPrice){
-        return  100 - ((lastPrice * 100 ) / currentPrice);
-    }
-
-    public BigDecimal getCurrentPrice(){
-        JsonObject resp =  HttpHelper.doGet( String.format("%s/ticker/price?symbol=%s",ConfigLoader.get("binance.url"),ConfigLoader.get("bot.symbol")));
-        return resp.get("price").getAsBigDecimal();
-    }
 
     public List<Order> getLastPendingOrders(){
         return orderRepository.getPendingOrders();

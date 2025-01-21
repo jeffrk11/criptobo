@@ -28,4 +28,8 @@ public class ConfigLoader {
         }
         return value.toString();
     }
+
+    public static double getDouble(String key) {
+        return Double.parseDouble(get(key));
+    }
 }

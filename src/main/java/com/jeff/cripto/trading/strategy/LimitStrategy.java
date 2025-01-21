@@ -1,4 +1,4 @@
-package com.jeff.cripto.service;
+package com.jeff.cripto.trading.strategy;
 
 import com.google.gson.JsonObject;
 import com.jeff.cripto.config.ConfigLoader;

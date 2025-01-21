@@ -1,4 +1,4 @@
-package com.jeff.cripto.service;
+package com.jeff.cripto.trading.strategy;
 
 import com.jeff.cripto.model.Order;
 
