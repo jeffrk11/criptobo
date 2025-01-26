@@ -53,9 +53,12 @@ public class LevaregeBot implements Bot{
         if(checkpoint.getUp() == null) return;
 
         if(shouldBuy(checkpoint, currentPrice)){
+            Order lastOrder = orderRepository.getLastBoughtOrder();
             checkpoint.setUp(null);
-            if(currentPrice.compareTo(orderRepository.getLastBoughtOrder().getPrice()) > 0)
+            if(!orderRepository.getPendingOrders().isEmpty() && lastOrder != null && currentPrice.compareTo(lastOrder.getPrice()) > 0)
                 return;
+
+            //n compra orders a cima do ultimo valor comprado
             log.warning("BUY");
             buy(new MarketStrategy());
             return;
