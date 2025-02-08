@@ -4,7 +4,7 @@ database:
   password: admin123
 
 bot:
-  symbol: "BTCUSDC"
+  symbol: "BTCUSDT"
   name: leverage-btcusdc
   core_interval: 360
   amount_to_trade: 10
