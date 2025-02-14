@@ -4,16 +4,17 @@ database:
   password: admin123
 
 bot:
-  symbol: "BTCUSDT"
-  name: leverage-btcusdc
-  core_interval: 1800
+  symbol: "BTCUSDC"
+  name: criptobo-btcusdc
+  core_interval: 30
   amount_to_trade: 10
 
   strategy:
-    type: LEVAREGE
-    baseDifference: 0.03
-    targetMultiply: 1.4
-    targetPricePercentage: 0.0031   #next price to buy
+    type: low-risk
+    baseDifference: -0.03
+    targetMultiply: 3
+    targetPricePercentage: 1.0031
+    stagnantMinutes: 120
 
 binance:
   url: {{BINANCE_URL}}
