@@ -41,6 +41,7 @@ public class LevaregeBot implements Bot{
 
         //is up or down, this set the direction
         if(checkpoint.getUp() == null && BigDecimal.valueOf(differenceCheckpoint).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0){
+            log.info("setting direction");
             checkpoint.setUp(differenceCheckpoint > 0);
             checkpoint.setPrice(currentPrice);
             checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp()));
@@ -50,13 +51,19 @@ public class LevaregeBot implements Bot{
         }
 
         //still not knowing
-        if(checkpoint.getUp() == null) return;
+        if(checkpoint.getUp() == null){
+            log.info("checkpoint ainda n setado");
+            return;
+        }
 
         if(shouldBuy(checkpoint, currentPrice)){
             Order lastOrder = orderRepository.getLastBoughtOrder();
             checkpoint.setUp(null);
-            if(!orderRepository.getPendingOrders().isEmpty() && lastOrder != null && currentPrice.compareTo(lastOrder.getPrice()) > 0)
+                // nao compra se tiver ordens abertas e preco atual maior q da ultima ordem
+            if(lastOrder != null && !orderRepository.getPendingOrders().isEmpty() && currentPrice.compareTo(lastOrder.getPrice()) > 0){
+                log.info("não vai comprar, pq o preco e maior comparado com a ultima ordem : agora %s ultima %s".formatted(currentPrice.toPlainString(), lastOrder.getPrice().toPlainString()));
                 return;
+            }
 
             //n compra orders a cima do ultimo valor comprado
             log.warning("BUY");
@@ -122,7 +129,9 @@ public class LevaregeBot implements Bot{
 
 
     private boolean shouldBuy(Checkpoint checkpoint, BigDecimal currentPrice){
-        return currentPrice.compareTo(checkpoint.getTargetValue()) >= 0 && !checkpoint.getUp();
+        boolean shouldBuy =  currentPrice.compareTo(checkpoint.getTargetValue()) >= 0 && !checkpoint.getUp();
+        log.info("shouldbuy ? : "+ shouldBuy);
+        return shouldBuy;
     }
     private boolean shouldSell(Checkpoint checkpoint, BigDecimal currentPrice){
         return currentPrice.compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.getUp();
