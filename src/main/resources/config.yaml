@@ -10,7 +10,7 @@ bot:
   amount_to_trade: 10
 
   strategy:
-    type: low-risk
+    type: TARGET
     baseDifference: -0.06
     targetMultiply: 3
     targetPricePercentage: 1.0037
