@@ -6,7 +6,7 @@ database:
 bot:
   symbol: "BTCUSDT"
   name: leverage-btcusdc
-  core_interval: 600
+  core_interval: 1800
   amount_to_trade: 10
 
   strategy:
