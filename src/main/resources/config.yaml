@@ -6,7 +6,7 @@ database:
 bot:
   symbol: "BTCUSDC"
   name: criptobo-btcusdc
-  core_interval: 30
+  core_interval: 900
   amount_to_trade: 10
 
   strategy:
