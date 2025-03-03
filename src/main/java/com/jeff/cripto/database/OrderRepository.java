@@ -30,8 +30,26 @@ public class OrderRepository extends Repository{
         return MapperDataBaseUtil.mapFromRows(rows, Order.class);
     }
 
+    public Order getLastPendingOrder(){
+        List<Order> orders = getPendingOrders();
+        if(orders.isEmpty())
+            return null;
+
+        return orders.get(0);
+    }
+
     public Order getLastBoughtOrder(){
         String sql = String.format("select * from orders where bot_name = '%s' and order_type = 'buy' and binance_status = 'FILLED' order by created_at DESC LIMIT 1", ConfigLoader.get("bot.name"));
+
+        List<Map<String, Object>> rows = query(sql);
+        if(rows.isEmpty())
+            return null;
+
+        return MapperDataBaseUtil.mapFromRows(rows, Order.class).get(0);
+    }
+
+    public Order getLastSoldOrder(){
+        String sql = String.format("select * from orders where bot_name = '%s' and order_type = 'sell' and binance_status = 'FILLED' order by created_at DESC LIMIT 1", ConfigLoader.get("bot.name"));
 
         List<Map<String, Object>> rows = query(sql);
         if(rows.isEmpty())

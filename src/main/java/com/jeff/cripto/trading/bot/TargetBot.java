@@ -165,6 +165,7 @@ public class TargetBot implements Bot{
     }
 
     private long getTimeSinceLastBuy(Order order){
+        if( order == null) return 0L;
         return  System.currentTimeMillis() - order.getCreatedAt();
     }
 

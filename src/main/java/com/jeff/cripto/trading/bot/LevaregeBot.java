@@ -57,11 +57,15 @@ public class LevaregeBot implements Bot{
         }
 
         if(shouldBuy(checkpoint, currentPrice)){
-            Order lastOrder = orderRepository.getLastBoughtOrder();
+            Order lastOrder = orderRepository.getLastPendingOrder();
             checkpoint.setUp(null);
-                // nao compra se tiver ordens abertas e preco atual maior q da ultima ordem
+            // nao compra se tiver ordens abertas e preco atual maior q da ultima ordem
             if(lastOrder != null && !orderRepository.getPendingOrders().isEmpty() && currentPrice.compareTo(lastOrder.getPrice()) > 0){
                 log.info("não vai comprar, pq o preco e maior comparado com a ultima ordem : agora %s ultima %s".formatted(currentPrice.toPlainString(), lastOrder.getPrice().toPlainString()));
+//esperar pra ver se vai ser util essa regra
+//                if(getTimeSinceLastBuy(orderRepository.getLastSoldOrder()) >= Integer.parseInt(ConfigLoader.get("bot.strategy.timeSinceLastSellMinutes")) * 60000L){
+//                    log.info("mas mais de %s se passaram então ele ira comprar");
+//                }
                 return;
             }
 
@@ -211,5 +215,11 @@ public class LevaregeBot implements Bot{
         sold.setStatus("executed");
         orderRepository.insertOrder(sold);
         return sold;
+    }
+
+    private long getTimeSinceLastBuy(Order order){
+        if(order == null) return 0L;
+
+        return  System.currentTimeMillis() - order.getCreatedAt();
     }
 }
