@@ -58,7 +58,6 @@ public class LevaregeBot implements Bot{
 
         if(shouldBuy(checkpoint, currentPrice)){
             Order lastOrder = orderRepository.getLastPendingOrder();
-            checkpoint.setUp(null);
             // nao compra se tiver ordens abertas e preco atual maior q da ultima ordem
             if(lastOrder != null && !orderRepository.getPendingOrders().isEmpty() && currentPrice.compareTo(lastOrder.getPrice()) > 0){
                 log.info("não vai comprar, pq o preco e maior comparado com a ultima ordem : agora %s ultima %s".formatted(currentPrice.toPlainString(), lastOrder.getPrice().toPlainString()));
@@ -72,6 +71,8 @@ public class LevaregeBot implements Bot{
             //n compra orders a cima do ultimo valor comprado
             log.warning("BUY");
             buy(new MarketStrategy());
+            checkpoint.setUp(null);
+            checkpoint.setPrice(currentPrice);
             return;
         }
         if(shouldSell(checkpoint, currentPrice)){
@@ -81,6 +82,7 @@ public class LevaregeBot implements Bot{
                 log.info("Sold for %s".formatted(order.getPaidValue().toPlainString()));
 
             checkpoint.setUp(null);
+            checkpoint.setPrice(currentPrice);
             return;
         }
         if(shouldUpdateCheckpoint(checkpoint, differenceCheckpoint)){
