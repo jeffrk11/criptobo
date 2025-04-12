@@ -10,7 +10,7 @@ bot:
   amount_to_trade: 20
 
   strategy:
-    type: LEVAREGE
+    type: LEVERAGE
     baseDifference: 0.03
     targetMultiply: 1.4
     targetPricePercentage: 0.0031   #next price to buy

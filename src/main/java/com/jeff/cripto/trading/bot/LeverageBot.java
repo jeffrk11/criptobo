@@ -4,98 +4,105 @@ import com.jeff.cripto.config.ConfigLoader;
 import com.jeff.cripto.database.OrderRepository;
 import com.jeff.cripto.model.Checkpoint;
 import com.jeff.cripto.model.Order;
+import com.jeff.cripto.trading.context.LeverageContext;
+import com.jeff.cripto.trading.rules.AboveOpenOrders;
+import com.jeff.cripto.trading.rules.BuyRule;
+import com.jeff.cripto.trading.rules.ValueHigher;
 import com.jeff.cripto.trading.strategy.BuyStrategy;
 import com.jeff.cripto.trading.strategy.MarketStrategy;
 import com.jeff.cripto.trading.strategy.SellStrategy;
 import com.jeff.cripto.trading.utils.BinanceService;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
-public class LevaregeBot implements Bot{
-    static Logger log = Logger.getLogger(LevaregeBot.class.getName());
+@Slf4j
+public class LeverageBot implements Bot{
+
     private final OrderRepository orderRepository;
-    private List<Checkpoint> checkpoints;
-    private Checkpoint checkpoint;
-    private BigDecimal currentPrice;
+    private final LeverageContext botContext;
+    private final List<BuyRule<LeverageContext>> buyRules;
 
-    public LevaregeBot(){
+    public LeverageBot(){
         this.orderRepository = new OrderRepository();
+        this.botContext = new LeverageContext();
+        this.buyRules = List.of(    new ValueHigher(),
+                                    new AboveOpenOrders());
     }
 
     @Override
     public void process() {
-        currentPrice = BinanceService.getCurrentPrice();
+        botContext.setCurrentPrice(BinanceService.getCurrentPrice());
 
-        if(checkpoint == null){
+        if(botContext.getCheckpoint() == null){
             log.info("Setting checkpoint");
-            checkpoint = new Checkpoint(currentPrice);
+            botContext.setCheckpoint(new Checkpoint(botContext.getCurrentPrice()));
             return;
         }
 
-        double differenceCheckpoint = calculateDifferencePercentage(checkpoint.getPrice().doubleValue() ,currentPrice.doubleValue());
+        double differenceCheckpoint = calculateDifferencePercentage(botContext.getCheckpoint().getPrice().doubleValue() ,botContext.getCurrentPrice().doubleValue());
 
-        printLog(checkpoint, currentPrice, differenceCheckpoint);
+        printLog(botContext.getCheckpoint(), differenceCheckpoint);
 
         //is up or down, this set the direction
-        if(checkpoint.getUp() == null && BigDecimal.valueOf(differenceCheckpoint).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0){
-            checkpoint.setUp(differenceCheckpoint > 0);
-            checkpoint.setPrice(currentPrice);
-            checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp()));
-            log.info("setting direction : "+ (checkpoint.isGoingUp() ? "up" : "down"));
+        if(botContext.getCheckpoint().getUp() == null && BigDecimal.valueOf(differenceCheckpoint).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0){
+            botContext.getCheckpoint().setUp(differenceCheckpoint > 0);
+            botContext.getCheckpoint().setPrice(botContext.getCurrentPrice());
+            botContext.getCheckpoint().setTargetValue(calculateNextPrice(botContext.getCurrentPrice(), botContext.getCheckpoint().getUp()));
+            log.info("setting direction : {}", (botContext.getCheckpoint().isGoingUp() ? "up" : "down"));
             return;
-        }else if(checkpoint.getUp() == null){
+        }else if(botContext.getCheckpoint().getUp() == null){
             log.info("Checkpoint not in range %s of +-%s".formatted(differenceCheckpoint, ConfigLoader.getDouble("bot.strategy.baseDifference")));
         }
 
         //still not knowing
-        if(checkpoint.getUp() == null){
+        if(botContext.getCheckpoint().getUp() == null){
             log.info("checkpoint ainda n setado");
             return;
         }
 
-        if(shouldBuy(checkpoint, currentPrice)){
-            Order lastOrder = orderRepository.getLastPendingOrder();
+        if(shouldBuy(botContext.getCheckpoint(), botContext.getCurrentPrice())){
+            botContext.setLastOrder(orderRepository.getLastPendingOrder());
             // nao compra se tiver ordens abertas e preco atual maior q da ultima ordem
-            if(lastOrder != null && !orderRepository.getPendingOrders().isEmpty() && currentPrice.compareTo(lastOrder.getPrice()) > 0){
-                log.info("não vai comprar, pq o preco e maior comparado com a ultima ordem : agora %s ultima %s".formatted(currentPrice.toPlainString(), lastOrder.getPrice().toPlainString()));
-                checkpoint.setUp(null);
+
                 //esperar pra ver se vai ser util essa regra
 //                if(getTimeSinceLastBuy(orderRepository.getLastSoldOrder()) >= Integer.parseInt(ConfigLoader.get("bot.strategy.timeSinceLastSellMinutes")) * 60000L){
 //                    log.info("mas mais de %s se passaram então ele ira comprar");
 //                }
-                return;
-            }
+
 
             //n compra orders a cima do ultimo valor comprado
-            log.warning("BUY");
+            log.warn("BUY");
             buy(new MarketStrategy());
-            checkpoint.setUp(null);
-            checkpoint.setPrice(currentPrice);
+            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
+
             return;
         }
-        if(shouldSell(checkpoint, currentPrice)){
-            log.warning("SELL");
+        if(shouldSell(botContext.getCheckpoint(), botContext.getCurrentPrice())){
+            log.warn("SELL");
             Order order = sell(new MarketStrategy());
             if(order != null)
                 log.info("Sold for %s".formatted(order.getPaidValue().toPlainString()));
 
-            checkpoint.setUp(null);
-            checkpoint.setPrice(currentPrice);
+            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
             return;
         }
-        if(shouldUpdateCheckpoint(checkpoint, differenceCheckpoint)){
-            checkpoint.setPrice(currentPrice);
-            checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp()));
-            log.warning("updated checkpoint -> %s --- %s".formatted(Math.abs(differenceCheckpoint), Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"))));
+        if(shouldUpdateCheckpoint(botContext.getCheckpoint(), differenceCheckpoint)){
+            botContext.getCheckpoint().setPrice(botContext.getCurrentPrice());
+            botContext.getCheckpoint().setTargetValue(calculateNextPrice(botContext.getCurrentPrice(), botContext.getCheckpoint().getUp()));
+            log.warn("updated checkpoint -> %s --- %s".formatted(Math.abs(differenceCheckpoint), Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"))));
             //log.info("checkpoint value %s target value %s".formatted(checkpoint.getPrice(), checkpoint.getTargetValue()));
         }
+//        if (shouldResetCheckPoint()) {
+//            log.info("resetinggg checkpoint, its stucked");
+//            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
+//        }
 
     }
 
-    public void printLog(Checkpoint checkpoint, BigDecimal currentPrice, double diffPercentage){
+    public void printLog(Checkpoint checkpoint, double diffPercentage){
 
         if(checkpoint.getUp() == null)
             return;
@@ -105,39 +112,44 @@ public class LevaregeBot implements Bot{
 
         String[] result =new String[9];
 
-        boolean currentPriceAboveCheckpoint = currentPrice.compareTo(checkpoint.getPrice()) >= 0;
+        boolean currentPriceAboveCheckpoint = botContext.getCurrentPrice().compareTo(checkpoint.getPrice()) >= 0;
         result[0] =                                                                             "";
         result[1] = checkpoint.isGoingDown() ?                                                  "┌––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
-        result[2] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "                 ┏━━ 🪙 %.2f".formatted(currentPrice) : " ");
+        result[2] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "                 ┏━━ 🪙 %.2f".formatted(botContext.getCurrentPrice()) : " ");
         result[3] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "            ┏━━━━┛ %.2f".formatted(diffPercentage > 0 ? diffPercentage : "" ) : " ");;
         result[4] = "🚩: %.2f ".formatted(checkpoint.getPrice()).concat(checkpoint.isGoingUp() ? "🌲" : "🔻");
         result[5] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "            ┗━━━━┓ %.2f".formatted(diffPercentage < 0 ? diffPercentage : "") : " ");;
-        result[6] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "                 ┗━━ 🪙 %.2f".formatted(currentPrice) : " ");
+        result[6] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "                 ┗━━ 🪙 %.2f".formatted(botContext.getCurrentPrice()) : " ");
         result[7] = checkpoint.isGoingUp() ?                                                   "└––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
         result[8] = "";
 
-        if(currentPrice.compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.isGoingUp()){
+        if(botContext.getCurrentPrice().compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.isGoingUp()){
             result[6] =                            "┊                 ┃";
             result[7] = checkpoint.isGoingUp() ?   "└–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                  ┃ ";
-            result[8] =                            "                  ┗━━ 🪙 %.2f".formatted(currentPrice);
-        }else if(currentPrice.compareTo(checkpoint.getTargetValue()) > 0 && checkpoint.isGoingDown()){
-            result[0] =                            "                  ┏━━ 🪙 %.2f".formatted(currentPrice);
+            result[8] =                            "                  ┗━━ 🪙 %.2f".formatted(botContext.getCurrentPrice());
+        }else if(botContext.getCurrentPrice().compareTo(checkpoint.getTargetValue()) > 0 && checkpoint.isGoingDown()){
+            result[0] =                            "                  ┏━━ 🪙 %.2f".formatted(botContext.getCurrentPrice());
             result[1] = checkpoint.isGoingDown() ? "┌–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                 ┃ ";
             result[2] =                            "┊                 ┃";
         }
 
-        for (int i = 0; i < result.length; i++) {
-            finalLog.append(result[i]);
+        for (String s : result) {
+            finalLog.append(s);
             finalLog.append("\n");
         }
 
         log.info(finalLog.toString());
     }
 
+    private boolean shouldResetCheckPoint(){
+        if(botContext.getLastOrder() == null)
+            return false;
+        return botContext.getCurrentPrice().compareTo(botContext.getLastOrder().getPrice()) > 0 && botContext.getCheckpoint().isGoingDown();
+    }
 
     private boolean shouldBuy(Checkpoint checkpoint, BigDecimal currentPrice){
-        boolean shouldBuy =  currentPrice.compareTo(checkpoint.getTargetValue()) >= 0 && !checkpoint.getUp();
-        log.info("shouldbuy ? : "+ shouldBuy);
+        boolean shouldBuy = buyRules.stream().allMatch(r -> r.shouldBuy(botContext));
+        log.info("shouldbuy ? : {}", shouldBuy);
         return shouldBuy;
     }
     private boolean shouldSell(Checkpoint checkpoint, BigDecimal currentPrice){
@@ -186,7 +198,7 @@ public class LevaregeBot implements Bot{
         List<Order> validOrders = new ArrayList<>();
 
         for(Order order : orders){
-            double diff = calculateDifferencePercentage( order.getPrice().doubleValue(), currentPrice.doubleValue());
+            double diff = calculateDifferencePercentage( order.getPrice().doubleValue(), botContext.getCurrentPrice().doubleValue());
             if(diff >= ConfigLoader.getDouble("bot.strategy.baseDifference") * ConfigLoader.getDouble("bot.strategy.targetMultiply")){
                 validOrders.add(order);
             }

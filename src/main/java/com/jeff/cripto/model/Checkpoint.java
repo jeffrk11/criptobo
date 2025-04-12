@@ -41,4 +41,9 @@ public class Checkpoint {
     public boolean isGoingDown(){
         return !up;
     }
+
+    public void resetCheckpoint(BigDecimal price){
+        this.setUp(null);
+        this.setPrice(price);
+    }
 }
