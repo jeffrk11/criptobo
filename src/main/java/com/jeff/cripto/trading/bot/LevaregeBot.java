@@ -41,10 +41,10 @@ public class LevaregeBot implements Bot{
 
         //is up or down, this set the direction
         if(checkpoint.getUp() == null && BigDecimal.valueOf(differenceCheckpoint).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0){
-            log.info("setting direction");
             checkpoint.setUp(differenceCheckpoint > 0);
             checkpoint.setPrice(currentPrice);
             checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getUp()));
+            log.info("setting direction : "+ (checkpoint.isGoingUp() ? "up" : "down"));
             return;
         }else if(checkpoint.getUp() == null){
             log.info("Checkpoint not in range %s of +-%s".formatted(differenceCheckpoint, ConfigLoader.getDouble("bot.strategy.baseDifference")));
@@ -61,7 +61,8 @@ public class LevaregeBot implements Bot{
             // nao compra se tiver ordens abertas e preco atual maior q da ultima ordem
             if(lastOrder != null && !orderRepository.getPendingOrders().isEmpty() && currentPrice.compareTo(lastOrder.getPrice()) > 0){
                 log.info("não vai comprar, pq o preco e maior comparado com a ultima ordem : agora %s ultima %s".formatted(currentPrice.toPlainString(), lastOrder.getPrice().toPlainString()));
-//esperar pra ver se vai ser util essa regra
+                checkpoint.setUp(null);
+                //esperar pra ver se vai ser util essa regra
 //                if(getTimeSinceLastBuy(orderRepository.getLastSoldOrder()) >= Integer.parseInt(ConfigLoader.get("bot.strategy.timeSinceLastSellMinutes")) * 60000L){
 //                    log.info("mas mais de %s se passaram então ele ira comprar");
 //                }
