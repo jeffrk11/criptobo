@@ -12,6 +12,8 @@ import com.jeff.cripto.trading.strategy.BuyStrategy;
 import com.jeff.cripto.trading.strategy.MarketStrategy;
 import com.jeff.cripto.trading.strategy.SellStrategy;
 import com.jeff.cripto.trading.utils.BinanceService;
+import com.jeff.cripto.trading.utils.CheckpointEngine;
+import com.jeff.cripto.trading.utils.TradingUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
@@ -24,10 +26,13 @@ public class LeverageBot implements Bot{
     private final OrderRepository orderRepository;
     private final LeverageContext botContext;
     private final List<BuyRule<LeverageContext>> buyRules;
+    private final CheckpointEngine checkpointEngine;
 
     public LeverageBot(){
         this.orderRepository = new OrderRepository();
         this.botContext = new LeverageContext();
+        this.checkpointEngine = new CheckpointEngine();
+
         this.buyRules = List.of(    new ValueHigher(),
                                     new AboveOpenOrders());
     }
@@ -36,32 +41,40 @@ public class LeverageBot implements Bot{
     public void process() {
         botContext.setCurrentPrice(BinanceService.getCurrentPrice());
 
-        if(botContext.getCheckpoint() == null){
-            log.info("Setting checkpoint");
-            botContext.setCheckpoint(new Checkpoint(botContext.getCurrentPrice()));
+        if(checkpointEngine.isNotRunning()){
+            checkpointEngine.start(botContext.getCurrentPrice());
             return;
         }
+        botContext.setCheckpoint(checkpointEngine.process(botContext.getCurrentPrice()));
 
-        double differenceCheckpoint = calculateDifferencePercentage(botContext.getCheckpoint().getPrice().doubleValue() ,botContext.getCurrentPrice().doubleValue());
-
-        printLog(botContext.getCheckpoint(), differenceCheckpoint);
-
-        //is up or down, this set the direction
-        if(botContext.getCheckpoint().getUp() == null && BigDecimal.valueOf(differenceCheckpoint).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0){
-            botContext.getCheckpoint().setUp(differenceCheckpoint > 0);
-            botContext.getCheckpoint().setPrice(botContext.getCurrentPrice());
-            botContext.getCheckpoint().setTargetValue(calculateNextPrice(botContext.getCurrentPrice(), botContext.getCheckpoint().getUp()));
-            log.info("setting direction : {}", (botContext.getCheckpoint().isGoingUp() ? "up" : "down"));
+//        if(botContext.getCheckpoint() == null){
+//            log.info("Setting checkpoint");
+//            botContext.setCheckpoint(new Checkpoint(botContext.getCurrentPrice()));
+//            return;
+//        }
+//
+//        double differenceCheckpoint = TradingUtils.calculateDifferencePercentage(botContext.getCheckpoint().getPrice().doubleValue() ,botContext.getCurrentPrice().doubleValue());
+//
+//        printLog(botContext.getCheckpoint(), differenceCheckpoint);
+//
+//        //is up or down, this set the direction
+//        if(botContext.getCheckpoint().getUp() == null && BigDecimal.valueOf(differenceCheckpoint).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0){
+//            botContext.getCheckpoint().setUp(differenceCheckpoint > 0);
+//            botContext.getCheckpoint().setPrice(botContext.getCurrentPrice());
+//            botContext.getCheckpoint().setTargetValue(calculateNextPrice(botContext.getCurrentPrice(), botContext.getCheckpoint().getUp()));
+//            log.info("setting direction : {}", (botContext.getCheckpoint().isGoingUp() ? "up" : "down"));
+//            return;
+//        }else if(botContext.getCheckpoint().getUp() == null){
+//            log.info("Checkpoint not in range %s of +-%s".formatted(differenceCheckpoint, ConfigLoader.getDouble("bot.strategy.baseDifference")));
+//        }
+//
+//        //still not knowing
+//        if(botContext.getCheckpoint().getUp() == null){
+//            log.info("checkpoint ainda n setado");
+//            return;
+//        }
+        if(botContext.getCheckpoint().isNotComplete())
             return;
-        }else if(botContext.getCheckpoint().getUp() == null){
-            log.info("Checkpoint not in range %s of +-%s".formatted(differenceCheckpoint, ConfigLoader.getDouble("bot.strategy.baseDifference")));
-        }
-
-        //still not knowing
-        if(botContext.getCheckpoint().getUp() == null){
-            log.info("checkpoint ainda n setado");
-            return;
-        }
 
         if(shouldBuy(botContext.getCheckpoint(), botContext.getCurrentPrice())){
             botContext.setLastOrder(orderRepository.getLastPendingOrder());
@@ -76,8 +89,7 @@ public class LeverageBot implements Bot{
             //n compra orders a cima do ultimo valor comprado
             log.warn("BUY");
             buy(new MarketStrategy());
-            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
-
+//            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
             return;
         }
         if(shouldSell(botContext.getCheckpoint(), botContext.getCurrentPrice())){
@@ -86,15 +98,15 @@ public class LeverageBot implements Bot{
             if(order != null)
                 log.info("Sold for %s".formatted(order.getPaidValue().toPlainString()));
 
-            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
+//            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
             return;
         }
-        if(shouldUpdateCheckpoint(botContext.getCheckpoint(), differenceCheckpoint)){
-            botContext.getCheckpoint().setPrice(botContext.getCurrentPrice());
-            botContext.getCheckpoint().setTargetValue(calculateNextPrice(botContext.getCurrentPrice(), botContext.getCheckpoint().getUp()));
-            log.warn("updated checkpoint -> %s --- %s".formatted(Math.abs(differenceCheckpoint), Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"))));
-            //log.info("checkpoint value %s target value %s".formatted(checkpoint.getPrice(), checkpoint.getTargetValue()));
-        }
+//        if(shouldUpdateCheckpoint(botContext.getCheckpoint(), differenceCheckpoint)){
+//            botContext.getCheckpoint().setPrice(botContext.getCurrentPrice());
+//            botContext.getCheckpoint().setTargetValue(calculateNextPrice(botContext.getCurrentPrice(), botContext.getCheckpoint().getUp()));
+//            log.warn("updated checkpoint -> %s --- %s".formatted(Math.abs(differenceCheckpoint), Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"))));
+//            //log.info("checkpoint value %s target value %s".formatted(checkpoint.getPrice(), checkpoint.getTargetValue()));
+//        }
 //        if (shouldResetCheckPoint()) {
 //            log.info("resetinggg checkpoint, its stucked");
 //            botContext.getCheckpoint().resetCheckpoint(botContext.getCurrentPrice());
@@ -152,6 +164,7 @@ public class LeverageBot implements Bot{
         log.info("shouldbuy ? : {}", shouldBuy);
         return shouldBuy;
     }
+
     private boolean shouldSell(Checkpoint checkpoint, BigDecimal currentPrice){
         return currentPrice.compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.getUp();
     }
@@ -198,7 +211,7 @@ public class LeverageBot implements Bot{
         List<Order> validOrders = new ArrayList<>();
 
         for(Order order : orders){
-            double diff = calculateDifferencePercentage( order.getPrice().doubleValue(), botContext.getCurrentPrice().doubleValue());
+            double diff = TradingUtils.calculateDifferencePercentage( order.getPrice().doubleValue(), botContext.getCurrentPrice().doubleValue());
             if(diff >= ConfigLoader.getDouble("bot.strategy.baseDifference") * ConfigLoader.getDouble("bot.strategy.targetMultiply")){
                 validOrders.add(order);
             }

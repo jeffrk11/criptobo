@@ -10,6 +10,7 @@ import com.jeff.cripto.trading.strategy.LimitStrategy;
 import com.jeff.cripto.trading.strategy.MarketStrategy;
 import com.jeff.cripto.trading.strategy.SellStrategy;
 import com.jeff.cripto.trading.utils.BinanceService;
+import com.jeff.cripto.trading.utils.TradingUtils;
 import com.jeff.cripto.utils.HttpHelper;
 import com.jeff.cripto.utils.OrderParse;
 
@@ -43,7 +44,7 @@ public class TargetBot implements Bot{
             return;
         }
         BigDecimal lastTradePrice = getLastTradePrice();
-        double differencePercentage = calculateDifferencePercentage(lastTradePrice.doubleValue(), currentPrice.doubleValue());
+        double differencePercentage = TradingUtils.calculateDifferencePercentage(lastTradePrice.doubleValue(), currentPrice.doubleValue());
 
 
         double targetDifference = calculateTargetDifference();

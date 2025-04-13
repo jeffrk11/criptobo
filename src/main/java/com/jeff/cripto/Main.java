@@ -18,6 +18,10 @@ public class Main {
 
 
     public static void main(String[] args) {
+        log.debug("Esse é um DEBUG"); // Ignorado
+        log.info("Esse é um INFO");   // Mostrado
+        log.warn("Esse é um WARN");   // Mostrado
+        log.error("Esse é um ERROR"); // Mostrado
 
         log.info("""
                                \s

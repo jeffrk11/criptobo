@@ -15,6 +15,8 @@ public class Checkpoint {
     private BigDecimal price;
     private BigDecimal targetValue;
     private Boolean up;
+    private Direction direction;
+    private boolean complete;
     private int streak;
 
     public Checkpoint(BigDecimal price) {
@@ -28,6 +30,10 @@ public class Checkpoint {
         this.streak = 1;
     }
 
+    public Checkpoint(Direction direction) {
+        this.direction = direction;
+    }
+
     public void updateCheckpoint(BigDecimal price, BigDecimal targetValue, boolean up){
         this.price = price;
         this.targetValue = targetValue;
@@ -35,15 +41,21 @@ public class Checkpoint {
         this.streak++;
     }
 
+    public boolean isNotComplete(){
+        return !complete;
+    }
+
     public boolean isGoingUp(){
-        return up;
+        return direction == Direction.UP;
     }
     public boolean isGoingDown(){
-        return !up;
+        return direction == Direction.DOWN;
     }
 
     public void resetCheckpoint(BigDecimal price){
-        this.setUp(null);
         this.setPrice(price);
+        this.setUp(null);
+        this.setDirection(Direction.NONE);
+        this.setComplete(false);
     }
 }
