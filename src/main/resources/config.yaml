@@ -5,13 +5,13 @@ database:
 
 bot:
   symbol: "BTCUSDC"
-  name: leverage-btcusdc-1h-20d
-  core_interval: 3600
+  name: leverage-btcusdc-3m-20d
+  core_interval: 180
   amount_to_trade: 20
 
   strategy:
     type: LEVERAGE
-    baseDifference: 0.03
+    baseDifference: 0.033
     targetMultiply: 1.7
     targetPricePercentage: 0.004   #next price to buy
 
