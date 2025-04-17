@@ -18,20 +18,14 @@ public class Main {
 
 
     public static void main(String[] args) {
-        log.debug("Esse é um DEBUG"); // Ignorado
-        log.info("Esse é um INFO");   // Mostrado
-        log.warn("Esse é um WARN");   // Mostrado
-        log.error("Esse é um ERROR"); // Mostrado
-
         log.info("""
-                               \s
-                                 █████╗ ██████╗ ██╗██████╗ ████████╗ █████╗ ██████╗  █████╗\s
+                                 █████╗ ██████╗ ██╗██████╗ ████████╗ █████╗ ██████╗  █████╗
                                 ██╔══██╗██╔══██╗██║██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗
                                 ██║  ╚═╝██████╔╝██║██████╔╝   ██║   ██║  ██║██████╦╝██║  ██║
                                 ██║  ██╗██╔══██╗██║██╔═══╝    ██║   ██║  ██║██╔══██╗██║  ██║
                                 ╚█████╔╝██║  ██║██║██║        ██║   ╚█████╔╝██████╦╝╚█████╔╝
                                  ╚════╝ ╚═╝  ╚═╝╚═╝╚═╝        ╚═╝    ╚════╝ ╚═════╝  ╚════╝
-               \s""");
+               """);
         log.info("Starting {} lets make some moneeeey  \uD83D\uDCB0\uD83E\uDE99\uD83D\uDCB8", ConfigLoader.get("bot.name"));
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         int interval = Integer.parseInt(ConfigLoader.get("bot.core_interval"));

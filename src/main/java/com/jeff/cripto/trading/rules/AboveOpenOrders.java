@@ -14,11 +14,11 @@ public class AboveOpenOrders implements BuyRule<LeverageContext> {
         if(context.getLastOrder() == null)
             return true;
 
-        boolean result = context.getCurrentPrice().compareTo(context.getLastOrder().getPrice()) > 0;
+        boolean isAboveLastOrder = context.getCurrentPrice().compareTo(context.getLastOrder().getPrice()) > 0;
 
-        if(!result)
+        if(isAboveLastOrder)
             log.info("nao vai comprar, pq o preco e maior comparado com a ultima ordem : agora %s ultima %s".formatted(context.getCurrentPrice().toPlainString(), context.getLastOrder().getPrice().toPlainString()));
 
-        return result;
+        return !isAboveLastOrder;
     }
 }

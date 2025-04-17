@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 
 @Slf4j
 public class CheckpointEngine {
-    private Checkpoint checkpoint;
+    private final Checkpoint checkpoint;
 
     private boolean running;
 
