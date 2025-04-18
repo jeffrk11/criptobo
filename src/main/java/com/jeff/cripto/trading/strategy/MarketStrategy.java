@@ -7,20 +7,20 @@ import com.jeff.cripto.utils.HttpHelper;
 import com.jeff.cripto.utils.OrderParse;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.logging.Logger;
 
 @Setter
 @Getter
+@Slf4j
 public class MarketStrategy implements BuyStrategy, SellStrategy {
-    static Logger log = Logger.getLogger(MarketStrategy.class.getName());
-
     private BigDecimal quantity;
 
     @Override
     public Order buy() {
-        log.warning(String.format("Buying %s in %s", ConfigLoader.get("bot.amount_to_trade"), ConfigLoader.get("bot.symbol")));
+        log.warn("Buying {} in {}", ConfigLoader.get("bot.amount_to_trade"), ConfigLoader.get("bot.symbol"));
         try{
             JsonObject response =  HttpHelper.doSignedPost(String.format("%s/order",ConfigLoader.get("binance.url")),
                     "symbol="+ConfigLoader.get("bot.symbol"),
@@ -30,18 +30,18 @@ public class MarketStrategy implements BuyStrategy, SellStrategy {
                     String.format("timestamp=%s", System.currentTimeMillis()));
             Order order =  OrderParse.parseFrom(response);
             order.setPaidValue(response.get("cummulativeQuoteQty").getAsBigDecimal());
-            log.info(String.format("bought for %s", order.getPaidValue()));
+            log.info("bought for {}", order.getPaidValue());
             return order;
         }catch (Exception e){
-            log.severe("Error when buying");
-            log.severe(e.getMessage());
+            log.error("Error when buying");
+            log.error(e.getMessage());
         }
         return null;
     }
 
     @Override
     public Order sell() {
-        log.warning(String.format("Selling %s in %s", quantity, ConfigLoader.get("bot.symbol")));
+        log.warn("Selling {} in {}", quantity, ConfigLoader.get("bot.symbol"));
         try{
             JsonObject response =  HttpHelper.doSignedPost(String.format("%s/order",ConfigLoader.get("binance.url")),
                     "symbol="+ConfigLoader.get("bot.symbol"),
@@ -51,11 +51,11 @@ public class MarketStrategy implements BuyStrategy, SellStrategy {
                     String.format("timestamp=%s", System.currentTimeMillis()));
             Order order =  OrderParse.parseFrom(response);
             order.setPaidValue(response.get("cummulativeQuoteQty").getAsBigDecimal());
-            log.info(String.format("Sold for %s", order.getPaidValue()));
+            log.info("Sold for {}", order.getPaidValue());
             return order;
         }catch (Exception e){
-            log.severe("Error when selling");
-            log.severe(e.getMessage());
+            log.error("Error when selling");
+            log.error(e.getMessage());
         }
         return null;
     }
