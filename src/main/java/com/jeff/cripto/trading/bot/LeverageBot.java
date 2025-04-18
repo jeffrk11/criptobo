@@ -14,6 +14,7 @@ import com.jeff.cripto.trading.strategy.SellStrategy;
 import com.jeff.cripto.trading.utils.BinanceService;
 import com.jeff.cripto.trading.utils.CheckpointEngine;
 import com.jeff.cripto.trading.utils.TradingUtils;
+import com.jeff.cripto.trading.utils.OrdersService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
@@ -27,12 +28,13 @@ public class LeverageBot implements Bot{
     private final LeverageContext botContext;
     private final List<BuyRule<LeverageContext>> buyRules;
     private final CheckpointEngine checkpointEngine;
+    private final OrdersService ordersService;
 
     public LeverageBot(){
         this.orderRepository = new OrderRepository();
         this.botContext = new LeverageContext();
         this.checkpointEngine = new CheckpointEngine();
-
+        this.ordersService = new OrdersService(orderRepository);
         this.buyRules = List.of(    new ValueHigher(),
                                     new AboveOpenOrders());
     }
@@ -71,8 +73,9 @@ public class LeverageBot implements Bot{
 
     public void printLog(Checkpoint checkpoint, double diffPercentage){
 
-        if(checkpoint.getUp() == null)
+        if(checkpoint.getTargetValue() == null)
             return;
+
 
 
         StringBuilder finalLog = new StringBuilder("\n");
@@ -83,9 +86,9 @@ public class LeverageBot implements Bot{
         result[0] =                                                                             "";
         result[1] = checkpoint.isGoingDown() ?                                                  "┌––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
         result[2] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "                 ┏━━ 🪙 %.2f".formatted(botContext.getCurrentPrice()) : " ");
-        result[3] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "            ┏━━━━┛ %.2f".formatted(diffPercentage > 0 ? diffPercentage : "" ) : " ");;
+        result[3] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "            ┏━━━━┛ %.2f".formatted(diffPercentage > 0 ? diffPercentage : 0) : " ");;
         result[4] = "🚩: %.2f ".formatted(checkpoint.getPrice()).concat(checkpoint.isGoingUp() ? "🌲" : "🔻");
-        result[5] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "            ┗━━━━┓ %.2f".formatted(diffPercentage < 0 ? diffPercentage : "") : " ");;
+        result[5] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "            ┗━━━━┓ %.2f".formatted(diffPercentage < 0 ? diffPercentage : 0) : " ");;
         result[6] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "                 ┗━━ 🪙 %.2f".formatted(botContext.getCurrentPrice()) : " ");
         result[7] = checkpoint.isGoingUp() ?                                                   "└––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
         result[8] = "";
@@ -94,7 +97,7 @@ public class LeverageBot implements Bot{
             result[6] =                            "┊                 ┃";
             result[7] = checkpoint.isGoingUp() ?   "└–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                  ┃ ";
             result[8] =                            "                  ┗━━ 🪙 %.2f".formatted(botContext.getCurrentPrice());
-        }else if(botContext.getCurrentPrice().compareTo(checkpoint.getTargetValue()) > 0 && checkpoint.isGoingDown()){
+        }else if(botContext.getCurrentPrice().compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.isGoingUp()){
             result[0] =                            "                  ┏━━ 🪙 %.2f".formatted(botContext.getCurrentPrice());
             result[1] = checkpoint.isGoingDown() ? "┌–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                 ┃ ";
             result[2] =                            "┊                 ┃";
@@ -106,6 +109,7 @@ public class LeverageBot implements Bot{
         }
 
         log.info(finalLog.toString());
+
     }
 
     private boolean shouldBuy(Checkpoint checkpoint, BigDecimal currentPrice){
