@@ -5,9 +5,7 @@ import com.jeff.cripto.database.OrderRepository;
 import com.jeff.cripto.model.Checkpoint;
 import com.jeff.cripto.model.Order;
 import com.jeff.cripto.trading.context.LeverageContext;
-import com.jeff.cripto.trading.rules.AboveOpenOrders;
-import com.jeff.cripto.trading.rules.BuyRule;
-import com.jeff.cripto.trading.rules.ValueHigher;
+import com.jeff.cripto.trading.rules.*;
 import com.jeff.cripto.trading.strategy.BuyStrategy;
 import com.jeff.cripto.trading.strategy.MarketStrategy;
 import com.jeff.cripto.trading.strategy.SellStrategy;
@@ -18,7 +16,6 @@ import com.jeff.cripto.trading.utils.OrdersService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -27,6 +24,7 @@ public class LeverageBot implements Bot{
     private final OrderRepository orderRepository;
     private final LeverageContext botContext;
     private final List<BuyRule<LeverageContext>> buyRules;
+    private final List<Rule> sellRules;
     private final CheckpointEngine checkpointEngine;
     private final OrdersService ordersService;
 
@@ -36,7 +34,9 @@ public class LeverageBot implements Bot{
         this.checkpointEngine = new CheckpointEngine();
         this.ordersService = new OrdersService(orderRepository);
         this.buyRules = List.of(    new ValueHigher(),
-                                    new AboveOpenOrders());
+                                    new AboveOpenOrders(orderRepository));
+
+        this.sellRules = List.of( new ValueBelow(botContext));
     }
 
     @Override
@@ -55,7 +55,6 @@ public class LeverageBot implements Bot{
             return;
 
         if(shouldBuy(botContext.getCheckpoint(), botContext.getCurrentPrice())){
-            botContext.setLastOrder(orderRepository.getLastPendingOrder());
             log.warn("BUY");
             buy(new MarketStrategy());
             return;
@@ -119,23 +118,9 @@ public class LeverageBot implements Bot{
     }
 
     private boolean shouldSell(Checkpoint checkpoint, BigDecimal currentPrice){
+        boolean shouldSell = sellRules.stream().allMatch(Rule::checkRule);
+        log.info("shoulsell ? : {}", shouldSell);
         return currentPrice.compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.getUp();
-    }
-
-    private boolean shouldUpdateCheckpoint(Checkpoint checkpoint, double differenceCheckpoint){
-
-        if(checkpoint.isGoingUp() && differenceCheckpoint < 0)//want to buy and its going up
-            return false;
-
-        if(checkpoint.isGoingDown() && differenceCheckpoint > 0)//want to sell and its going down
-            return false;
-
-        return Math.abs(differenceCheckpoint) > Double.parseDouble(ConfigLoader.get("bot.strategy.baseDifference"));
-    }
-
-    private BigDecimal getAllBoughtQuantity(){
-
-        return null;
     }
 
     @Override
@@ -156,7 +141,7 @@ public class LeverageBot implements Bot{
     @Override
     public Order sell(SellStrategy strategy) {
         List<Order> orders = orderRepository.getPendingOrders();
-        List<Order> validOrders = new ArrayList<>();
+        List<Order> validOrders = ordersService.getPendingOrderBelowBaseDiff(botContext.getCurrentPrice());
 
         for(Order order : orders){
             double diff = TradingUtils.calculateDifferencePercentage( order.getPrice().doubleValue(), botContext.getCurrentPrice().doubleValue());
@@ -191,11 +176,5 @@ public class LeverageBot implements Bot{
         sold.setStatus("executed");
         orderRepository.insertOrder(sold);
         return sold;
-    }
-
-    private long getTimeSinceLastBuy(Order order){
-        if(order == null) return 0L;
-
-        return  System.currentTimeMillis() - order.getCreatedAt();
     }
 }
