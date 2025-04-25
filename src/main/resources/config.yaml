@@ -12,7 +12,7 @@ bot:
   strategy:
     type: LEVERAGE
     baseDifference: 0.033
-    targetMultiply: 1.72
+    targetMultiply: 1.5
     targetPricePercentage: 0.004
 
 binance:
