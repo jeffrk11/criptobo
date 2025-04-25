@@ -140,15 +140,7 @@ public class LeverageBot implements Bot{
 
     @Override
     public Order sell(SellStrategy strategy) {
-        List<Order> orders = orderRepository.getPendingOrders();
         List<Order> validOrders = ordersService.getPendingOrderBelowBaseDiff(botContext.getCurrentPrice());
-
-        for(Order order : orders){
-            double diff = TradingUtils.calculateDifferencePercentage( order.getPrice().doubleValue(), botContext.getCurrentPrice().doubleValue());
-            if(diff >= ConfigLoader.getDouble("bot.strategy.baseDifference") * ConfigLoader.getDouble("bot.strategy.targetMultiply")){
-                validOrders.add(order);
-            }
-        }
 
         if(validOrders.isEmpty()){
             log.info("There is no orders to sell in range");
