@@ -9,7 +9,11 @@ import java.math.BigDecimal;
 public class BinanceService {
 
     public static BigDecimal getCurrentPrice(){
-        JsonObject resp =  HttpHelper.doGet( String.format("%s/ticker/price?symbol=%s", ConfigLoader.get("binance.url"),ConfigLoader.get("bot.symbol")));
+        return getCurrentPrice(ConfigLoader.get("bot.symbol"));
+    }
+
+    public static BigDecimal getCurrentPrice(String symbol){
+        JsonObject resp =  HttpHelper.doGet( String.format("%s/ticker/price?symbol=%s", ConfigLoader.get("binance.url"),symbol));
         return resp.get("price").getAsBigDecimal();
     }
 }
