@@ -11,7 +11,8 @@ public class ValueBelow implements Rule{
 
     @Override
     public boolean checkRule() {
-        return context.getCurrentPrice().compareTo(context.getCheckpoint().getTargetValue()) < 0 && context.getCheckpoint().getUp();
+        return context.getCurrentPrice().compareTo(context.getCheckpoint().getTargetValue()) < 0 &&
+                context.getCheckpoint().getUp();
     }
 
 }

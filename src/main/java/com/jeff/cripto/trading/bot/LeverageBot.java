@@ -27,6 +27,7 @@ public class LeverageBot implements Bot{
     private final List<Rule> sellRules;
     private final CheckpointEngine checkpointEngine;
     private final OrdersService ordersService;
+    private BigDecimal bnbValue;
 
     public LeverageBot(){
         this.orderRepository = new OrderRepository();
@@ -42,6 +43,7 @@ public class LeverageBot implements Bot{
     @Override
     public void process() {
         botContext.setCurrentPrice(BinanceService.getCurrentPrice());
+        bnbValue = BinanceService.getCurrentPrice("BNBUSDC");
 
         if(checkpointEngine.isNotRunning()){
             checkpointEngine.start(botContext.getCurrentPrice());
@@ -127,16 +129,13 @@ public class LeverageBot implements Bot{
     public Order buy(BuyStrategy strategy) {
         Order order = strategy.buy();
         if(order == null) return null;
+
+        order.setCommission(order.getCommission().multiply(bnbValue));
+        order.setCommissionAsset("BNBUSDC");
+
         orderRepository.insertOrder(order);
         return order;
     }
-
-//    public Order sell(SellStrategy strategy, boolean a){
-//        Order order = strategy.sell();
-//        if (order == null) return null;
-//
-//
-//    }
 
     @Override
     public Order sell(SellStrategy strategy) {
@@ -166,6 +165,10 @@ public class LeverageBot implements Bot{
             orderRepository.createDependency(order.getOrderId(), sold.getOrderId());
         }
         sold.setStatus("executed");
+
+        sold.setCommission(sold.getCommission().multiply(bnbValue));
+        sold.setCommissionAsset("BNBUSDC");
+
         orderRepository.insertOrder(sold);
         return sold;
     }
