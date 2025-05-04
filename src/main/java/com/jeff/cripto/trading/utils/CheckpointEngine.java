@@ -34,7 +34,6 @@ public class CheckpointEngine {
             return checkpoint;
         }
 
-
         double differenceLastPoint = TradingUtils.calculateDifferencePercentage(checkpoint.getPrice().doubleValue() , currentPrice.doubleValue());
 
         if(checkpoint.getDirection() == Direction.NONE){

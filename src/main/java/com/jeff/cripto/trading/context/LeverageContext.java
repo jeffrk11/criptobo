@@ -8,4 +8,8 @@ import lombok.Setter;
 @Setter
 public class LeverageContext extends BotContext{
     private Checkpoint checkpoint;
+
+    public LeverageContext(){
+        checkpoint = new Checkpoint();
+    }
 }
