@@ -57,7 +57,7 @@ jobs:
 
       - name: Clean up existing containers and images
         run: |
-          ssh -o StrictHostKeyChecking=no jeff@192.168.1.150 << EOF        
+          ssh -o StrictHostKeyChecking=no jeff@severinopi.pinto-char.ts.net << EOF        
             echo "Stopping and removing existing container and image with name $IMAGE_NAME..."
             docker stop $IMAGE_NAME || true
             docker rm $IMAGE_NAME || true
@@ -65,10 +65,10 @@ jobs:
           EOF
 
       - name: clean directory
-        run: ssh -o StrictHostKeyChecking=no jeff@192.168.1.150 "rm -rf rm -rf ~/cloud-criptobo/criptobo/"
+        run: ssh -o StrictHostKeyChecking=no jeff@severinopi.pinto-char.ts.net "rm -rf rm -rf ~/cloud-criptobo/criptobo/"
 
       - name: clone repository to server
-        run: scp -o StrictHostKeyChecking=no -r . jeff@192.168.1.150:~/cloud-criptobo/criptobo
+        run: scp -o StrictHostKeyChecking=no -r . jeff@severinopi.pinto-char.ts.net:~/cloud-criptobo/criptobo
 
       - name: Build Image and Deploy
-        run: ssh -o StrictHostKeyChecking=no jeff@192.168.1.150 "cd ~/cloud-criptobo/criptobo && docker build -t $IMAGE_NAME . && docker run -d -it --name $IMAGE_NAME $IMAGE_NAME"
+        run: ssh -o StrictHostKeyChecking=no jeff@severinopi.pinto-char.ts.net "cd ~/cloud-criptobo/criptobo && docker build -t $IMAGE_NAME . && docker run -d -it --name $IMAGE_NAME $IMAGE_NAME"
