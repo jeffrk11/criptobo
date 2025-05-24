@@ -57,5 +57,6 @@ public class Checkpoint {
         this.setUp(null);
         this.setDirection(Direction.NONE);
         this.setComplete(false);
+        this.setTargetValue(BigDecimal.ZERO);
     }
 }

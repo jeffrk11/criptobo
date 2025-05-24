@@ -34,7 +34,7 @@ public class LeverageBot implements Bot{
         this.checkpointEngine = new CheckpointEngine();
         this.ordersService = new OrdersService(orderRepository);
         this.buyRules = List.of(    new ValueHigher(botContext),
-                                    new AboveOpenOrders(orderRepository, botContext),
+                                    new BelowOpenOrders(orderRepository),
                                     new ValueOutOfBaseDiff(orderRepository));
 
         this.sellRules = List.of( new ValueBelow(botContext));
@@ -48,24 +48,24 @@ public class LeverageBot implements Bot{
             checkpointEngine.start(BinanceService.getCurrentPrice());
             return;
         }
+
         botContext.setCheckpoint(checkpointEngine.process(BinanceService.getCurrentPrice()));
 
-        printLog(botContext.getCheckpoint(), TradingUtils.calculateDifferencePercentage(botContext.getCheckpoint().getPrice().doubleValue() , BinanceService.getCurrentPrice().doubleValue()));
 
-        if(botContext.getCheckpoint().isNotComplete())
+        if (botContext.getCheckpoint().getTargetValue().equals(BigDecimal.ZERO))
             return;
+
+        printLog(botContext.getCheckpoint(), TradingUtils.calculateDifferencePercentage(botContext.getCheckpoint().getPrice().doubleValue() , BinanceService.getCurrentPrice().doubleValue()));
 
         if(shouldBuy()){
             log.warn("BUY");
             buy(new MarketStrategy());
-            return;
         }
-        if(shouldSell(botContext.getCheckpoint(), BinanceService.getCurrentPrice())){
+        if(shouldSell()){
             log.warn("SELL");
             Order order = sell(new MarketStrategy());
             if(order != null)
-                log.info("Sold for %s".formatted(order.getPaidValue().toPlainString()));
-            return;
+                log.info("Sold for {}",order.getPaidValue().toPlainString());
         }
 
 
@@ -86,9 +86,9 @@ public class LeverageBot implements Bot{
         result[0] =                                                                             "";
         result[1] = checkpoint.isGoingDown() ?                                                  "┌––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
         result[2] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "                 ┏━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice()) : " ");
-        result[3] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "            ┏━━━━┛ %.2f".formatted(diffPercentage > 0 ? diffPercentage : 0) : " ");;
+        result[3] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "            ┏━━━━┛ %.2f".formatted(diffPercentage > 0 ? diffPercentage : 0) : " ");
         result[4] = "🚩: %.2f ".formatted(checkpoint.getPrice()).concat(checkpoint.isGoingUp() ? "🌲" : "🔻");
-        result[5] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "            ┗━━━━┓ %.2f".formatted(diffPercentage < 0 ? diffPercentage : 0) : " ");;
+        result[5] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "            ┗━━━━┓ %.2f".formatted(diffPercentage < 0 ? diffPercentage  : 0) : " ");
         result[6] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "                 ┗━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice()) : " ");
         result[7] = checkpoint.isGoingUp() ?                                                   "└––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
         result[8] = "";
@@ -113,15 +113,19 @@ public class LeverageBot implements Bot{
     }
 
     private boolean shouldBuy(){
-        boolean shouldBuy = buyRules.stream().allMatch(Rule::checkRule);
-        log.info("shouldbuy ? : {}", shouldBuy);
-        return shouldBuy;
+        return buyRules.stream().allMatch(rule -> {
+                    boolean buy = rule.checkRule();
+                    log.warn("rule {} should buy ? -> {}", rule.getClass().getSimpleName(), buy);
+                    return buy;
+            });
     }
 
-    private boolean shouldSell(Checkpoint checkpoint, BigDecimal currentPrice){
-        boolean shouldSell = sellRules.stream().allMatch(Rule::checkRule);
-        log.info("shoulsell ? : {}", shouldSell);
-        return currentPrice.compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.getUp();
+    private boolean shouldSell(){
+        return sellRules.stream().allMatch(rule -> {
+            boolean buy = rule.checkRule();
+            log.warn("rule {} should sell ? -> {}", rule.getClass().getSimpleName(), buy);
+            return buy;
+        });
     }
 
     @Override

@@ -30,7 +30,7 @@ public class CheckpointEngine {
 
     public Checkpoint process(BigDecimal currentPrice){
         if(checkpoint.isComplete()){
-            log.info("checkpoint ja completo, resete");
+            log.info("checkpoint ja completo, reset");
             return checkpoint;
         }
 
@@ -83,8 +83,6 @@ public class CheckpointEngine {
         checkpoint.setDirection(differenceLastPoint > 0 ? Direction.UP : Direction.DOWN);
         checkpoint.setPrice(currentPrice);
         checkpoint.setTargetValue(calculateNextPrice(currentPrice, checkpoint.getDirection()));
-        log.info("setting direction : {}", (checkpoint.isGoingUp() ? "up" : "down"));
-
     }
 
     private BigDecimal calculateNextPrice(BigDecimal currentPrice, Direction up){

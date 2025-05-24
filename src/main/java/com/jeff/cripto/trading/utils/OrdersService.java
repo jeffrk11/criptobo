@@ -22,7 +22,7 @@ public class OrdersService {
 
         for(Order order : orders){
             double diff = TradingUtils.calculateDifferencePercentage( order.getPrice().doubleValue(), currentPrice.doubleValue());
-            if(diff >= ConfigLoader.getDouble("bot.strategy.baseDifference") * ConfigLoader.getDouble("bot.strategy.targetMultiply")){
+            if(diff >= ConfigLoader.getDouble("bot.strategy.sellDifference")){
                 validOrders.add(order);
             }
         }

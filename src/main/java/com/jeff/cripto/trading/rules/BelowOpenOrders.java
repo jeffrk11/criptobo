@@ -2,17 +2,15 @@ package com.jeff.cripto.trading.rules;
 
 import com.jeff.cripto.database.OrderRepository;
 import com.jeff.cripto.model.Order;
-import com.jeff.cripto.trading.context.LeverageContext;
 import com.jeff.cripto.trading.utils.BinanceService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @AllArgsConstructor
-public class AboveOpenOrders implements Rule {
+public class BelowOpenOrders implements Rule {
 
     private OrderRepository orderRepository;
-    private LeverageContext context;
 
     @Override
     public boolean checkRule() {
