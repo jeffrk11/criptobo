@@ -28,7 +28,7 @@ public class ValueOutOfBaseDiff implements Rule{
             return false;
 
         double diff = TradingUtils.calculateDifferencePercentage(order.getPrice().doubleValue(), currentPrice.doubleValue());
-        return BigDecimal.valueOf(diff).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.baseDifference"))) > 0;
+        return BigDecimal.valueOf(diff).abs().compareTo(BigDecimal.valueOf(ConfigLoader.getDouble("bot.strategy.notBuyZone"))) > 0;
     }
 
 }
