@@ -15,7 +15,7 @@ bot:
     targetMultiply: 2.34
     notBuyZone: 0.9
     targetPricePercentage: 0.004
-    sellDifference: 0.25
+    sellDifference: 0.29
 
 binance:
   url: {{BINANCE_URL}}
