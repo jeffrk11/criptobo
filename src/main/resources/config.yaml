@@ -7,7 +7,7 @@ bot:
   symbol: "BTCUSDC"
   name: leverage-btcusdc-5m-20d
   core_interval: 300
-  amount_to_trade: 20
+  amount_to_trade: 50
 
   strategy:
     type: LEVERAGE
