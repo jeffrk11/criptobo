@@ -1,5 +1,5 @@
 database:
-  url: {{POSTGRES_URL}}/tradingbotdb
+  url: §{POSTGRES_URL}/tradingbotdb
   user: tradingbot
   password: admin123
 
@@ -18,6 +18,6 @@ bot:
     sellDifference: 0.29
 
 binance:
-  url: {{BINANCE_URL}}
-  api_key: {{API_KEY}}
-  secret_key: {{SECRET_KEY}}
+  url: ${BINANCE_URL}
+  api_key: ${API_KEY}
+  secret_key: ${SECRET_KEY}
