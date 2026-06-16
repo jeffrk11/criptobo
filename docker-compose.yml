@@ -1,0 +1,10 @@
+services:
+  app:
+    image: ${IMAGE_NAME}
+    container_name: ${IMAGE_NAME}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
