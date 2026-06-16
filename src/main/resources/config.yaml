@@ -19,5 +19,5 @@ bot:
 
 binance:
   url: ${PROD_BINANCE_URL}
-  api_key: ${PROD_API_KEY}
-  secret_key: ${PROD_SECRET_KEY}
+  api_key: ${PROD_APIKEY_BINANCE}
+  secret_key: ${PROD_SECRET_BINANCE}
