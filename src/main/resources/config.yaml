@@ -1,7 +1,7 @@
 database:
   url: ${POSTGRES_URL}/tradingbotdb
   user: tradingbot
-  password: admin123
+  password: fje!bakj@fouse00bg
 
 bot:
   symbol: "BTCUSDC"
