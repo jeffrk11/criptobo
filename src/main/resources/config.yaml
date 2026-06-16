@@ -18,6 +18,6 @@ bot:
     sellDifference: 0.29
 
 binance:
-  url: ${BINANCE_URL}
-  api_key: ${API_KEY}
-  secret_key: ${SECRET_KEY}
+  url: ${PROD_BINANCE_URL}
+  api_key: ${PROD_API_KEY}
+  secret_key: ${PROD_SECRET_KEY}
