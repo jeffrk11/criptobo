@@ -1,5 +1,5 @@
 database:
-  url: §{POSTGRES_URL}/tradingbotdb
+  url: ${POSTGRES_URL}/tradingbotdb
   user: tradingbot
   password: admin123
 
