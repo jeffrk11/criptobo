@@ -36,6 +36,7 @@ public class Main {
             try{
                 bot.process();
             }catch (Exception e){
+                log.error("EXCEPTION: {}", e.getClass());
                 log.error("Something happen: {}", e.getMessage());
             }
         };

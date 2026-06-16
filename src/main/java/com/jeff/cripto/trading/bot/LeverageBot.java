@@ -72,43 +72,46 @@ public class LeverageBot implements Bot{
     }
 
     public void printLog(Checkpoint checkpoint, double diffPercentage){
+        try {
+            if (checkpoint.getTargetValue() == null)
+                return;
 
-        if(checkpoint.getTargetValue() == null)
-            return;
 
+            StringBuilder finalLog = new StringBuilder("\n");
 
+            String[] result = new String[9];
 
-        StringBuilder finalLog = new StringBuilder("\n");
+            boolean currentPriceAboveCheckpoint = BinanceService.getCurrentPrice().compareTo(checkpoint.getPrice()) >= 0;
+            result[0] = "";
+            result[1] = checkpoint.isGoingDown() ? "┌––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
+            result[2] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "                 ┏━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice()) : " ");
+            result[3] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "            ┏━━━━┛ %.2f".formatted(diffPercentage > 0 ? diffPercentage : 0) : " ");
+            result[4] = "🚩: %.2f ".formatted(checkpoint.getPrice()).concat(checkpoint.isGoingUp() ? "🌲" : "🔻");
+            result[5] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "            ┗━━━━┓ %.2f".formatted(diffPercentage < 0 ? diffPercentage : 0) : " ");
+            result[6] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "                 ┗━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice()) : " ");
+            result[7] = checkpoint.isGoingUp() ? "└––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
+            result[8] = "";
 
-        String[] result =new String[9];
+            if (BinanceService.getCurrentPrice().compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.isGoingUp()) {
+                result[6] = "┊                 ┃";
+                result[7] = checkpoint.isGoingUp() ? "└–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                  ┃ ";
+                result[8] = "                  ┗━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice());
+            } else if (BinanceService.getCurrentPrice().compareTo(checkpoint.getTargetValue()) > 0 && checkpoint.isGoingDown()) {
+                result[0] = "                  ┏━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice());
+                result[1] = checkpoint.isGoingDown() ? "┌–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                 ┃ ";
+                result[2] = "┊                 ┃";
+            }
 
-        boolean currentPriceAboveCheckpoint = BinanceService.getCurrentPrice().compareTo(checkpoint.getPrice()) >= 0;
-        result[0] =                                                                             "";
-        result[1] = checkpoint.isGoingDown() ?                                                  "┌––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
-        result[2] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "                 ┏━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice()) : " ");
-        result[3] = (checkpoint.isGoingDown() ? "┊" : " ").concat(currentPriceAboveCheckpoint ? "            ┏━━━━┛ %.2f".formatted(diffPercentage > 0 ? diffPercentage : 0) : " ");
-        result[4] = "🚩: %.2f ".formatted(checkpoint.getPrice()).concat(checkpoint.isGoingUp() ? "🌲" : "🔻");
-        result[5] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "            ┗━━━━┓ %.2f".formatted(diffPercentage < 0 ? diffPercentage  : 0) : " ");
-        result[6] = (checkpoint.isGoingUp() ? "┊" : " ").concat(!currentPriceAboveCheckpoint ? "                 ┗━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice()) : " ");
-        result[7] = checkpoint.isGoingUp() ?                                                   "└––––––––––––––––––––🚧  %.2f".formatted(checkpoint.getTargetValue()) : "";
-        result[8] = "";
+            for (String s : result) {
+                finalLog.append(s);
+                finalLog.append("\n");
+            }
 
-        if(BinanceService.getCurrentPrice().compareTo(checkpoint.getTargetValue()) < 0 && checkpoint.isGoingUp()){
-            result[6] =                            "┊                 ┃";
-            result[7] = checkpoint.isGoingUp() ?   "└–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                  ┃ ";
-            result[8] =                            "                  ┗━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice());
-        }else if(BinanceService.getCurrentPrice().compareTo(checkpoint.getTargetValue()) > 0 && checkpoint.isGoingDown()){
-            result[0] =                            "                  ┏━━ 🪙 %.2f".formatted(BinanceService.getCurrentPrice());
-            result[1] = checkpoint.isGoingDown() ? "┌–––––––––––––––––┃–– 🚧 %.2f".formatted(checkpoint.getTargetValue()) : "                 ┃ ";
-            result[2] =                            "┊                 ┃";
+            log.info(finalLog.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error(e.getMessage());
         }
-
-        for (String s : result) {
-            finalLog.append(s);
-            finalLog.append("\n");
-        }
-
-        log.info(finalLog.toString());
 
     }
 

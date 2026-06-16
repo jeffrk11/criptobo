@@ -1,5 +1,5 @@
 database:
-  url: ${POSTGRES_URL}/tradingbotdb
+  url: jdbc:postgresql://severino.pinto-char.ts.net:5432/tradingbotdb
   user: tradingbot
   password: fje!bakj@fouse00bg
 
